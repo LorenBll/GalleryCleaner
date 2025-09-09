@@ -11,24 +11,24 @@ import send2trash
 
 class ToolTip:
     """Custom tooltip class for customtkinter widgets"""
-    def __init__(self, widget, text='widget info'):
+    def __init__(self, widget:ctk.CTk, text:str="widget info") -> None:
         self.widget = widget
         self.text = text
         self.tipwindow = None
-        self.widget.bind('<Enter>', self.on_enter)
-        self.widget.bind('<Leave>', self.on_leave)
-        self.widget.bind('<ButtonPress>', self.on_leave)
-    
-    def on_enter(self, event=None):
+        self.widget.bind("<Enter>", self.on_enter)
+        self.widget.bind("<Leave>", self.on_leave)
+        self.widget.bind("<ButtonPress>", self.on_leave)
+
+    def on_enter(self, event:tk.Event=None) -> None:
         self.show_tooltip()
-    
-    def on_leave(self, event=None):
+
+    def on_leave(self, event:tk.Event=None) -> None:
         self.hide_tooltip()
     
-    def show_tooltip(self):
+    def show_tooltip(self) -> None:
         if self.tipwindow or not self.text:
             return
-        x, y, _, _ = self.widget.bbox("insert") if hasattr(self.widget, 'bbox') else (0, 0, 0, 0)
+        x, y, _, _ = self.widget.bbox("insert") if hasattr(self.widget, "bbox") else (0, 0, 0, 0)
         x = x + self.widget.winfo_rootx() + 25
         y = y + self.widget.winfo_rooty() + 25
         
@@ -41,7 +41,7 @@ class ToolTip:
                         font=("Arial", 10, "normal"))
         label.pack(ipadx=1)
     
-    def hide_tooltip(self):
+    def hide_tooltip(self) -> None:
         tw = self.tipwindow
         self.tipwindow = None
         if tw:
@@ -54,7 +54,7 @@ class App(ctk.CTk):
     
     # ===== SETUP METHODS =====
     
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         
         # Configure window
@@ -103,11 +103,6 @@ class App(ctk.CTk):
         self.bind("<Control-e>", self.on_key_rotate_right)
         self.bind("<Control-E>", self.on_key_rotate_right)
         
-        # Bind Escape or Ctrl+B for back functionality
-        self.bind("<Escape>", self.on_key_back)
-        self.bind("<Control-b>", self.on_key_back)
-        self.bind("<Control-B>", self.on_key_back)
-        
         # Make sure the window can receive focus for key events
         self.focus_set()
         
@@ -131,7 +126,7 @@ class App(ctk.CTk):
         # Show the initial layer
         self.show_layer1()
     
-    def create_layers(self):
+    def create_layers(self) -> None:
         """Create the two display layers as frames."""
         # Layer 1: Initial layer with input box and button
         self.layer1 = ctk.CTkFrame(self)
@@ -451,8 +446,8 @@ class App(ctk.CTk):
         ToolTip(
             self.rotation_checkbox, 
             "ON: The rotation of an image happens both visually and at file level\n" +
-            "OFF: The rotation of an image happens only visually and doesn't happen on the file"
-            )
+            "OFF: The rotation of an image happens only visually and doesn't happen on the file" 
+        )
         
         # Add rotate left button
         self.rotate_left_button = self.create_button(
@@ -490,7 +485,7 @@ class App(ctk.CTk):
         )
         self.bottom_button2.grid(row=0, column=6, padx=5, sticky="")
     
-    def create_button(self, parent, text, command=None, tooltip=None, **kwargs):
+    def create_button(self, parent, text, command=None, tooltip=None, **kwargs) -> ctk.CTkButton:
         """Method for creating buttons with consistent styling"""
         button = ctk.CTkButton(parent, text=text, command=command, **kwargs)
         if tooltip:
@@ -501,17 +496,17 @@ class App(ctk.CTk):
 
     # ===== UI METHODS =====
     
-    def show_layer1(self):
+    def show_layer1(self) -> None:
         """Show layer 1 and hide layer 2"""
         self.layer2.grid_remove()
         self.layer1.grid(row=0, column=0, sticky="nsew")
-    
-    def show_layer2(self):
+
+    def show_layer2(self) -> None:
         """Show layer 2 and hide layer 1"""
         self.layer1.grid_remove()
         self.layer2.grid(row=0, column=0, sticky="nsew")
 
-    def display_file(self, file_path):
+    def display_file(self, file_path:str) -> None:
         """Display file"""
         # Clear previous content before displaying new file - Enhanced container cleaning
         self.clear_container_completely()
@@ -522,7 +517,7 @@ class App(ctk.CTk):
             # Load rotation from cache for this specific image (for visual rotation mode)
             self.current_rotation = self.image_rotations.get(file_path, 0)
             
-            if hasattr(self, 'directory_images') and self.directory_images:
+            if hasattr(self, "directory_images") and self.directory_images:
                 try:
                     current_index = self.directory_images.index(file_path)
                     self.current_image_index = current_index
@@ -553,12 +548,12 @@ class App(ctk.CTk):
             self.display_image(file_path)
             self.update_navigation_buttons(file_path)
             
-            if hasattr(self, 'directory_images') and self.directory_images:
+            if hasattr(self, "directory_images") and self.directory_images:
                 self.preload_images(self.current_image_index)
         else:
             self.reset_ui_state()
         
-    def display_image(self, image_path):
+    def display_image(self, image_path:str) -> None:
         """Display an image in the section, resized to fit"""
         try:
             # Clear previous content first
@@ -606,18 +601,18 @@ class App(ctk.CTk):
             self.image_label.configure(image=None, text=f"Error loading image: {str(e)}")
             self.image_label.image = None
 
-    def clear_image(self):
+    def clear_image(self) -> None:
         """Clear the image display"""
         self.clear_container_completely()
         self.image_label.configure(image=None, text="No image selected")
         self.image_label.image = None
     
-    def clear_container_completely(self):
+    def clear_container_completely(self) -> None:
         """Clear all resources and reset display state"""
         # Clear image display
-        if hasattr(self, 'image_label'):
+        if hasattr(self, "image_label"):
             self.image_label.configure(image="", text="")
-            if hasattr(self.image_label, 'image'):
+            if hasattr(self.image_label, "image"):
                 self.image_label.image = None
         
         # Force garbage collection of image resources
@@ -626,8 +621,8 @@ class App(ctk.CTk):
             gc.collect()
         except:
             pass
-    
-    def reset_ui_state(self):
+
+    def reset_ui_state(self) -> None:
         """Reset the UI state when no image is available."""
         self.clear_container_completely()
         self.image_index_label.configure(text="")
@@ -637,17 +632,17 @@ class App(ctk.CTk):
         self.current_image_path = None
         self.current_rotation = 0
         
-        if hasattr(self, 'left_button') and hasattr(self, 'right_button'):
+        if hasattr(self, "left_button") and hasattr(self, "right_button"):
             self.left_button.configure(fg_color="gray", hover_color="gray")
             self.right_button.configure(fg_color="gray", hover_color="gray")
         
-        if hasattr(self, 'rotate_left_button') and hasattr(self, 'rotate_right_button'):
+        if hasattr(self, "rotate_left_button") and hasattr(self, "rotate_right_button"):
             self.rotate_left_button.configure(fg_color="gray", hover_color="gray")
             self.rotate_right_button.configure(fg_color="gray", hover_color="gray")
 
-    def update_navigation_buttons(self, current_item_path):
+    def update_navigation_buttons(self, current_item_path:str) -> None:
         """Update the state of navigation buttons based on current item position"""
-        if not hasattr(self, 'directory_images') or not self.directory_images:
+        if not hasattr(self, "directory_images") or not self.directory_images:
             self.left_button.configure(fg_color="gray", hover_color="gray")
             self.right_button.configure(fg_color="gray", hover_color="gray")
             return
@@ -675,7 +670,7 @@ class App(ctk.CTk):
             self.left_button.configure(fg_color="gray", hover_color="gray")
             self.right_button.configure(fg_color="gray", hover_color="gray")
 
-    def display_error(self, label, message, duration=3):
+    def display_error(self, label:ctk.CTkLabel, message:str, duration:int=3) -> None:
         """Display an error message in the specified label for a given duration.
         
         Args:
@@ -695,7 +690,7 @@ class App(ctk.CTk):
 
     # ===== BUTTON EVENT HANDLERS =====
 
-    def handle_submit(self):
+    def handle_submit(self) -> None:
         """Handle the submit button click - validate directory and switch layers"""
         # Get the directory path from the input box
         directory_path = self.input_box.get().strip()
@@ -762,9 +757,9 @@ class App(ctk.CTk):
         except Exception as e:
             self.display_error(self.error_label, f"Error accessing directory: {str(e)}")
 
-    def on_left_arrow_click(self):
+    def on_left_arrow_click(self) -> None:
         """Handle left arrow button click - navigate to previous image"""
-        if hasattr(self, 'directory_images') and self.directory_images and hasattr(self, 'current_image_path'):
+        if hasattr(self, "directory_images") and self.directory_images and hasattr(self, "current_image_path"):
             if self.current_image_index > 0:
                 # Clear container before switching
                 self.clear_container_completely()
@@ -772,9 +767,9 @@ class App(ctk.CTk):
                 previous_image_path = self.directory_images[self.current_image_index]
                 self.display_file(previous_image_path)
 
-    def on_right_arrow_click(self):
+    def on_right_arrow_click(self) -> None:
         """Handle right arrow button click - navigate to next image"""
-        if hasattr(self, 'directory_images') and self.directory_images and hasattr(self, 'current_image_path'):
+        if hasattr(self, "directory_images") and self.directory_images and hasattr(self, "current_image_path"):
             if self.current_image_index < len(self.directory_images) - 1:
                 # Clear container before switching
                 self.clear_container_completely()
@@ -782,9 +777,9 @@ class App(ctk.CTk):
                 next_image_path = self.directory_images[self.current_image_index]
                 self.display_file(next_image_path)
 
-    def on_delete_click(self):
+    def on_delete_click(self) -> None:
         """Handle delete button click - move current image to trash and navigate to next"""
-        if hasattr(self, 'directory_images') and self.directory_images and hasattr(self, 'current_image_path'):
+        if hasattr(self, "directory_images") and self.directory_images and hasattr(self, "current_image_path"):
             try:
                 # Clear container before deleting
                 self.clear_container_completely()
@@ -796,7 +791,7 @@ class App(ctk.CTk):
                 self.image_cache.clear()
                 
                 if not self.directory_images:
-                    self.input_box.delete(0, 'end')
+                    self.input_box.delete(0, "end")
                     self.display_error(self.error_label, "All images were cleared")
                     self.show_layer1()
                     return
@@ -813,9 +808,9 @@ class App(ctk.CTk):
             except Exception:
                 pass
 
-    def on_refresh_click(self):
+    def on_refresh_click(self) -> None:
         """Handle refresh button click - reconstruct the files list and reload the second layer"""
-        if hasattr(self, 'current_directory') and self.current_directory:
+        if hasattr(self, "current_directory") and self.current_directory:
             try:
                 # Clear container before refreshing
                 self.clear_container_completely()
@@ -825,12 +820,12 @@ class App(ctk.CTk):
                 images = self.list_images(self.current_directory, is_recursive)
                 
                 if not images:
-                    self.input_box.delete(0, 'end')
+                    self.input_box.delete(0, "end")
                     self.display_error(self.error_label, "No images found after refresh")
                     self.show_layer1()
                     return
                 
-                current_image_path = getattr(self, 'current_image_path', None)
+                current_image_path = getattr(self, "current_image_path", None)
                 self.directory_images = images
                 
                 new_index = 0
@@ -843,9 +838,9 @@ class App(ctk.CTk):
             except Exception:
                 pass
     
-    def on_rotate_left_click(self):
+    def on_rotate_left_click(self) -> None:
         """Handle rotate left button click - rotate image 90 degrees counter-clockwise"""
-        if hasattr(self, 'current_image_path') and self.current_image_path and self.is_image_file(self.current_image_path):
+        if hasattr(self, "current_image_path") and self.current_image_path and self.is_image_file(self.current_image_path):
             if self.rotation_checkbox.get():
                 # File rotation mode
                 self.rotate_image_file(self.current_image_path, -90)
@@ -855,9 +850,9 @@ class App(ctk.CTk):
                 self.image_rotations[self.current_image_path] = self.current_rotation
                 self.display_image(self.current_image_path)
 
-    def on_rotate_right_click(self):
+    def on_rotate_right_click(self) -> None:
         """Handle rotate right button click - rotate image 90 degrees clockwise"""
-        if hasattr(self, 'current_image_path') and self.current_image_path and self.is_image_file(self.current_image_path):
+        if hasattr(self, "current_image_path") and self.current_image_path and self.is_image_file(self.current_image_path):
             if self.rotation_checkbox.get():
                 # File rotation mode
                 self.rotate_image_file(self.current_image_path, 90)
@@ -867,12 +862,12 @@ class App(ctk.CTk):
                 self.image_rotations[self.current_image_path] = self.current_rotation
                 self.display_image(self.current_image_path)
 
-    def on_back_click(self):
+    def on_back_click(self) -> None:
         """Handle back button click - return to layer 1 and clear input box"""
         # Clear container before going back
         self.clear_container_completely()
         
-        self.input_box.delete(0, 'end')
+        self.input_box.delete(0, "end")
         self.error_label.configure(text="")
         self.show_layer1()
         self.input_box.focus_set()
@@ -880,8 +875,8 @@ class App(ctk.CTk):
 
 
     # ===== NORMAL EVENT HANDLERS =====
-    
-    def on_closing(self):
+
+    def on_closing(self) -> None:
         """Handle window close event - shuts down the entire application"""
         # Clean up all resources before closing
         self.clear_container_completely()
@@ -889,54 +884,54 @@ class App(ctk.CTk):
         self.destroy()
         sys.exit()
 
-    def cancel_focus(self, event=None):
+    def cancel_focus(self, event=None) -> None:
         """Cancel focus on any focused widget when ESC is pressed"""
-        # Only cancel focus if we're on layer 1, otherwise handle back functionality
-        if hasattr(self, 'layer1') and self.layer1.winfo_viewable():
+        # Only cancel focus if we"re on layer 1, otherwise handle back functionality
+        if hasattr(self, "layer1") and self.layer1.winfo_viewable():
             self.focus_set()
         else:
             self.on_key_back(event)
     
-    def on_key_right_arrow(self, event=None):
+    def on_key_right_arrow(self, event=None) -> None:
         """Handle D key, right arrow key presses - navigate to next image"""
-        if hasattr(self, 'layer2') and self.layer2.winfo_viewable():
+        if hasattr(self, "layer2") and self.layer2.winfo_viewable():
             self.on_right_arrow_click()
     
-    def on_key_left_arrow(self, event=None):
+    def on_key_left_arrow(self, event=None) -> None:
         """Handle A key, left arrow key presses - navigate to previous image"""
-        if hasattr(self, 'layer2') and self.layer2.winfo_viewable():
+        if hasattr(self, "layer2") and self.layer2.winfo_viewable():
             self.on_left_arrow_click()
     
-    def on_key_delete(self, event=None):
+    def on_key_delete(self, event=None) -> None:
         """Handle S key press - delete current image"""
-        if hasattr(self, 'layer2') and self.layer2.winfo_viewable():
+        if hasattr(self, "layer2") and self.layer2.winfo_viewable():
             self.on_delete_click()
     
-    def on_key_refresh(self, event=None):
+    def on_key_refresh(self, event=None) -> None:
         """Handle Ctrl+R key press - refresh current directory"""
-        if hasattr(self, 'layer2') and self.layer2.winfo_viewable():
+        if hasattr(self, "layer2") and self.layer2.winfo_viewable():
             self.on_refresh_click()
 
-    def on_key_rotate_left(self, event=None):
+    def on_key_rotate_left(self, event=None) -> None:
         """Handle Ctrl+Q key press - rotate left"""
-        if hasattr(self, 'layer2') and self.layer2.winfo_viewable():
+        if hasattr(self, "layer2") and self.layer2.winfo_viewable():
             self.on_rotate_left_click()
 
-    def on_key_rotate_right(self, event=None):
+    def on_key_rotate_right(self, event=None) -> None:
         """Handle Ctrl+E key press - rotate right"""
-        if hasattr(self, 'layer2') and self.layer2.winfo_viewable():
+        if hasattr(self, "layer2") and self.layer2.winfo_viewable():
             self.on_rotate_right_click()
 
-    def on_key_back(self, event=None):
+    def on_key_back(self, event=None) -> None:
         """Handle Escape or Ctrl+B key press - return to layer 1"""
-        if hasattr(self, 'layer2') and self.layer2.winfo_viewable():
+        if hasattr(self, "layer2") and self.layer2.winfo_viewable():
             self.on_back_click()
 
 
 
     # ===== UTILITY METHODS =====
-    
-    def list_images(self, directory_path, recursive=False):
+
+    def list_images(self, directory_path:str, recursive:bool=False) -> list[str]:
         """List viewable image files in the specified directory.
         
         Args:
@@ -983,17 +978,17 @@ class App(ctk.CTk):
             raise PermissionError("Permission denied accessing directory")
         except Exception as e:
             raise Exception(f"Error accessing directory: {str(e)}")
-        
-    def load_first_image_file(self):
+
+    def load_first_image_file(self) -> None:
         """Load and display the first image file in the directory images list"""
-        if hasattr(self, 'directory_images') and self.directory_images:
+        if hasattr(self, "directory_images") and self.directory_images:
             self.current_image_index = 0
             first_image_path = self.directory_images[0]
             self.display_file(first_image_path)
         else:
             self.reset_ui_state()
 
-    def get_file_details(self, file_path):
+    def get_file_details(self, file_path:str) -> str:
         """Get file details including format, size, resolution, creation and modification dates"""
         try:
             file_stats = os.stat(file_path)
@@ -1001,7 +996,7 @@ class App(ctk.CTk):
             name_without_ext = os.path.splitext(filename)[0]
             
             _, ext = os.path.splitext(file_path)
-            format_type = ext.upper().lstrip('.')
+            format_type = ext.upper().lstrip(".")
             
             size_bytes = file_stats.st_size
             if size_bytes < 1024:
@@ -1032,13 +1027,13 @@ class App(ctk.CTk):
         except Exception:
             return "Error retrieving file details"
 
-    def is_image_file(self, file_path):
+    def is_image_file(self, file_path:str) -> bool:
         """Check if a file is an image based on its extension"""
-        image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp', '.svg', '.ico', '.tga', '.psd'}
+        image_extensions = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp", ".svg", ".ico", ".tga", ".psd"}
         _, ext = os.path.splitext(file_path.lower())
         return ext in image_extensions
-    
-    def load_and_resize_image(self, image_path, apply_visual_rotation=False):
+
+    def load_and_resize_image(self, image_path:str, apply_visual_rotation:bool=False) -> None:
         """Load and resize an image to fit the green section"""
         try:
             image = Image.open(image_path)
@@ -1071,9 +1066,9 @@ class App(ctk.CTk):
         except Exception:
             return None
 
-    def preload_images(self, center_index):
+    def preload_images(self, center_index:int) -> None:
         """Preload images around the center index to cache"""
-        if not hasattr(self, 'directory_images') or not self.directory_images:
+        if not hasattr(self, "directory_images") or not self.directory_images:
             return
         
         start_index = max(0, center_index - 19)
@@ -1092,7 +1087,7 @@ class App(ctk.CTk):
         for key in keys_to_remove:
             del self.image_cache[key]
         
-        def preload_worker():
+        def preload_worker() -> None:
             for i in range(start_index, end_index):
                 if i < len(self.directory_images):
                     image_path = self.directory_images[i]
@@ -1106,8 +1101,8 @@ class App(ctk.CTk):
                                 pass
         
         threading.Thread(target=preload_worker, daemon=True).start()
-    
-    def rotate_image_file(self, image_path, degrees):
+
+    def rotate_image_file(self, image_path:str, degrees:int) -> None:
         """Rotate an image file by the specified degrees and save it back to the file"""
         try:
             # Clear cache for this image first
@@ -1118,12 +1113,12 @@ class App(ctk.CTk):
             # Open the original image
             with Image.open(image_path) as image:
                 # Convert to RGB if necessary to ensure compatibility
-                if image.mode in ('RGBA', 'LA', 'P'):
+                if image.mode in ("RGBA", "LA", "P"):
                     # For images with transparency or palette, convert to RGBA first
-                    if image.mode == 'P' and 'transparency' in image.info:
-                        image = image.convert('RGBA')
-                    elif image.mode == 'P':
-                        image = image.convert('RGB')
+                    if image.mode == "P" and "transparency" in image.info:
+                        image = image.convert("RGBA")
+                    elif image.mode == "P":
+                        image = image.convert("RGB")
                 
                 # Rotate the image
                 rotated_image = image.rotate(-degrees, expand=True)
@@ -1131,25 +1126,25 @@ class App(ctk.CTk):
                 # Save the rotated image back to the file
                 # Preserve the original format
                 original_format = image.format
-                if original_format in ['JPEG', 'JPG']:
-                    # For JPEG, convert to RGB if it's RGBA
-                    if rotated_image.mode == 'RGBA':
+                if original_format in ["JPEG", "JPG"]:
+                    # For JPEG, convert to RGB if it"s RGBA
+                    if rotated_image.mode == "RGBA":
                         # Create a white background and paste the image onto it
-                        rgb_image = Image.new('RGB', rotated_image.size, (255, 255, 255))
-                        rgb_image.paste(rotated_image, mask=rotated_image.split()[-1] if rotated_image.mode == 'RGBA' else None)
+                        rgb_image = Image.new("RGB", rotated_image.size, (255, 255, 255))
+                        rgb_image.paste(rotated_image, mask=rotated_image.split()[-1] if rotated_image.mode == "RGBA" else None)
                         rotated_image = rgb_image
-                    rotated_image.save(image_path, format='JPEG', quality=95, optimize=True)
-                elif original_format == 'PNG':
-                    rotated_image.save(image_path, format='PNG', optimize=True)
+                    rotated_image.save(image_path, format="JPEG", quality=95, optimize=True)
+                elif original_format == "PNG":
+                    rotated_image.save(image_path, format="PNG", optimize=True)
                 else:
                     # For other formats, try to save in the original format
                     try:
                         rotated_image.save(image_path, format=original_format)
                     except:
                         # If that fails, save as PNG
-                        rotated_image.save(image_path, format='PNG')
+                        rotated_image.save(image_path, format="PNG")
             
-            # Reset rotation tracking since we've applied it to the file
+            # Reset rotation tracking since we"ve applied it to the file
             if image_path in self.image_rotations:
                 del self.image_rotations[image_path]
             self.current_rotation = 0
@@ -1162,14 +1157,14 @@ class App(ctk.CTk):
             self.image_details_label.configure(text=file_details)
             
         except Exception as e:
-            # If rotation fails, show an error but don't crash
+            # If rotation fails, show an error but don"t crash
             print(f"Error rotating image: {str(e)}")
             # Still try to display the original image
             self.display_image(image_path)
 
 
 
-def main():
+def main() -> None:
     app = App()
     app.mainloop()
 
