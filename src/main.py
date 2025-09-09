@@ -444,7 +444,11 @@ class App(ctk.CTk):
         self.rotation_checkbox.select()  # Default to ON (checked)
         
         # Add tooltip for rotation checkbox
-        ToolTip(self.rotation_checkbox, "ON: The rotation of an image happens both visually and at file level\nOFF: The rotation of an image happens only visually and doesn't happen on the file")
+        ToolTip(
+            self.rotation_checkbox, 
+            "ON: The rotation of an image happens both visually and at file level\n" +
+            "OFF: The rotation of an image happens only visually and doesn't happen on the file"
+            )
         
         # Add rotate left button
         self.rotate_left_button = self.create_button(
