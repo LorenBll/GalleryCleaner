@@ -61,13 +61,14 @@ class App(ctk.CTk):
         self.title("GalleryCleaner")
         self.geometry("920x595")
         
-        # Set minimum window size to accommodate the 800x500 green section
-        # 800 (green) + 50 (left sidebar) + 50 (right sidebar) + 20 (padding) = 920px width
-        # 500 (green) + 75 (bottom section) + 20 (padding) = 595px height
+        # Set minimum window size to accommodate the 920x595 layout
         self.minsize(920, 595)
         
         # Set maximum window width to 1200 pixels
-        self.maxsize(1200, 10000)  # 10000 for height allows unlimited vertical expansion
+        self.maxsize(1200, 595)
+        
+        # Prevent fullscreen mode
+        self.resizable(False, False)
         
         # Set theme and color
         ctk.set_appearance_mode("system")  # Default system theme
@@ -1171,8 +1172,6 @@ class App(ctk.CTk):
 def main():
     app = App()
     app.mainloop()
-
-
 
 if __name__ == "__main__":
     main()
