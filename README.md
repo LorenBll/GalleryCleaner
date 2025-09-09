@@ -30,6 +30,7 @@ Managing large collections of photos can be overwhelming. Traditional file manag
 - **Responsive Layout**: Automatically scales to fit your screen
 - **Multi-format Support**: Handles various image formats
 - **Quick Loading**: Optimized for large image collections
+- **Flexible Rotation**: Choose between visual-only rotation or permanent file modification
 
 ### **Safe & Reliable**
 - **Trash Integration**: Files moved to system trash (not permanently deleted)

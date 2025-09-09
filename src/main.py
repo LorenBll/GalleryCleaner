@@ -118,7 +118,8 @@ class App(ctk.CTk):
         # Initialize image cache for preloading
         self.image_cache = {}
         
-        # Initialize rotation tracking
+        # Initialize rotation tracking per image
+        self.image_rotations = {}  # Dictionary to store rotation per image path
         self.current_rotation = 0  # 0, 90, 180, 270 degrees
         
         # Show the initial layer
@@ -167,6 +168,9 @@ class App(ctk.CTk):
             text_color_disabled=("gray40", "gray60")
         )
         self.recursive_checkbox.pack(anchor="center")
+        
+        # Add tooltip for recursive checkbox
+        ToolTip(self.recursive_checkbox, "Also consider images from subfolders")
         
         # Error message label below the checkbox
         self.error_label = ctk.CTkLabel(
@@ -340,14 +344,15 @@ class App(ctk.CTk):
         self.bottom_middle.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
         self.bottom_middle.grid_propagate(False)  # Prevent resizing
         
-        # Configure bottom middle grid for centering 5 buttons horizontally
+        # Configure bottom middle grid for centering buttons and checkbox
         self.bottom_middle.grid_columnconfigure(0, weight=1)
         self.bottom_middle.grid_columnconfigure(1, weight=0)  # Back button
         self.bottom_middle.grid_columnconfigure(2, weight=0)  # Delete button
-        self.bottom_middle.grid_columnconfigure(3, weight=0)  # Rotate left button
-        self.bottom_middle.grid_columnconfigure(4, weight=0)  # Rotate right button
-        self.bottom_middle.grid_columnconfigure(5, weight=0)  # Refresh button
-        self.bottom_middle.grid_columnconfigure(6, weight=1)
+        self.bottom_middle.grid_columnconfigure(3, weight=0)  # Rotation checkbox
+        self.bottom_middle.grid_columnconfigure(4, weight=0)  # Rotate left button
+        self.bottom_middle.grid_columnconfigure(5, weight=0)  # Rotate right button
+        self.bottom_middle.grid_columnconfigure(6, weight=0)  # Refresh button
+        self.bottom_middle.grid_columnconfigure(7, weight=1)
         self.bottom_middle.grid_rowconfigure(0, weight=1)
         
         # Add back button
@@ -424,6 +429,23 @@ class App(ctk.CTk):
         )
         self.bottom_button1.grid(row=0, column=2, padx=5, sticky="")
         
+        # Add rotation replication checkbox
+        self.rotation_checkbox = ctk.CTkCheckBox(
+            self.bottom_middle,
+            text="Replicate Rotation On File",
+            height=20,
+            text_color=("gray10", "gray90"),
+            checkbox_width=18,
+            checkbox_height=18,
+            border_width=2,
+            text_color_disabled=("gray40", "gray60")
+        )
+        self.rotation_checkbox.grid(row=0, column=3, padx=5, sticky="")
+        self.rotation_checkbox.select()  # Default to ON (checked)
+        
+        # Add tooltip for rotation checkbox
+        ToolTip(self.rotation_checkbox, "ON: The rotation of an image happens both visually and at file level\nOFF: The rotation of an image happens only visually and doesn't happen on the file")
+        
         # Add rotate left button
         self.rotate_left_button = self.create_button(
             self.bottom_middle,
@@ -434,7 +456,7 @@ class App(ctk.CTk):
             width=80,
             height=30
         )
-        self.rotate_left_button.grid(row=0, column=3, padx=5, sticky="")
+        self.rotate_left_button.grid(row=0, column=4, padx=5, sticky="")
         
         # Add rotate right button
         self.rotate_right_button = self.create_button(
@@ -446,7 +468,7 @@ class App(ctk.CTk):
             width=80,
             height=30
         )
-        self.rotate_right_button.grid(row=0, column=4, padx=5, sticky="")
+        self.rotate_right_button.grid(row=0, column=5, padx=5, sticky="")
         
         # Add refresh button
         self.bottom_button2 = self.create_button(
@@ -458,7 +480,7 @@ class App(ctk.CTk):
             width=80,
             height=30
         )
-        self.bottom_button2.grid(row=0, column=5, padx=5, sticky="")
+        self.bottom_button2.grid(row=0, column=6, padx=5, sticky="")
         
         # Hide layer 2 initially
         self.layer2.grid_remove()
@@ -535,6 +557,7 @@ class App(ctk.CTk):
             # Clear the image cache when loading a new directory
             self.clear_container_completely()
             self.image_cache.clear()
+            self.image_rotations.clear()  # Clear rotation state for new directory
             
             # If all checks pass, switch to second layer
             self.show_layer2()
@@ -577,8 +600,8 @@ class App(ctk.CTk):
                 send2trash.send2trash(self.current_image_path)
                 self.directory_images.remove(self.current_image_path)
                 
-                if self.current_image_path in self.image_cache:
-                    del self.image_cache[self.current_image_path]
+                # Clear entire cache and force rebuild
+                self.image_cache.clear()
                 
                 if not self.directory_images:
                     self.input_box.delete(0, 'end')
@@ -591,6 +614,10 @@ class App(ctk.CTk):
                 
                 next_image_path = self.directory_images[self.current_image_index]
                 self.display_file(next_image_path)
+                
+                # Rebuild cache for surrounding images
+                self.preload_images(self.current_image_index)
+                
             except Exception:
                 pass
 
@@ -627,14 +654,26 @@ class App(ctk.CTk):
     def on_rotate_left_click(self):
         """Handle rotate left button click - rotate image 90 degrees counter-clockwise"""
         if hasattr(self, 'current_image_path') and self.current_image_path and self.is_image_file(self.current_image_path):
-            self.current_rotation = (self.current_rotation - 90) % 360
-            self.display_image(self.current_image_path)
+            if self.rotation_checkbox.get():
+                # File rotation mode
+                self.rotate_image_file(self.current_image_path, -90)
+            else:
+                # Visual rotation mode
+                self.current_rotation = (self.current_rotation - 90) % 360
+                self.image_rotations[self.current_image_path] = self.current_rotation
+                self.display_image(self.current_image_path)
 
     def on_rotate_right_click(self):
         """Handle rotate right button click - rotate image 90 degrees clockwise"""
         if hasattr(self, 'current_image_path') and self.current_image_path and self.is_image_file(self.current_image_path):
-            self.current_rotation = (self.current_rotation + 90) % 360
-            self.display_image(self.current_image_path)
+            if self.rotation_checkbox.get():
+                # File rotation mode
+                self.rotate_image_file(self.current_image_path, 90)
+            else:
+                # Visual rotation mode
+                self.current_rotation = (self.current_rotation + 90) % 360
+                self.image_rotations[self.current_image_path] = self.current_rotation
+                self.display_image(self.current_image_path)
 
     def on_closing(self):
         """Handle window close event - shuts down the entire application"""
@@ -709,8 +748,8 @@ class App(ctk.CTk):
         if file_path:
             self.current_image_path = file_path
             
-            # Reset rotation when switching to a new file
-            self.current_rotation = 0
+            # Load rotation from cache for this specific image (for visual rotation mode)
+            self.current_rotation = self.image_rotations.get(file_path, 0)
             
             if hasattr(self, 'directory_images') and self.directory_images:
                 try:
@@ -754,24 +793,43 @@ class App(ctk.CTk):
             # Clear previous content first
             self.clear_container_completely()
             
-            # Create cache key that includes rotation
-            cache_key = f"{image_path}_rot_{self.current_rotation}"
-            
-            if cache_key in self.image_cache:
-                photo = self.image_cache[cache_key]
-                self.image_label.configure(image=photo, text="")
-                self.image_label.image = photo
-                return
-            
-            # Handle image files
-            photo = self.load_and_resize_image(image_path)
-            if photo:
-                self.image_label.configure(image=photo, text="")
-                self.image_label.image = photo
-                self.image_cache[cache_key] = photo
+            # Check if visual rotation mode and rotation is applied
+            if not self.rotation_checkbox.get() and self.current_rotation != 0:
+                # Create cache key that includes rotation for visual rotation mode
+                cache_key = f"{image_path}_rot_{self.current_rotation}"
+                
+                if cache_key in self.image_cache:
+                    photo = self.image_cache[cache_key]
+                    self.image_label.configure(image=photo, text="")
+                    self.image_label.image = photo
+                    return
+                
+                # Load and apply visual rotation
+                photo = self.load_and_resize_image(image_path, apply_visual_rotation=True)
+                if photo:
+                    self.image_label.configure(image=photo, text="")
+                    self.image_label.image = photo
+                    self.image_cache[cache_key] = photo
+                else:
+                    self.image_label.configure(image=None, text="Error loading image")
+                    self.image_label.image = None
             else:
-                self.image_label.configure(image=None, text="Error loading image")
-                self.image_label.image = None
+                # File rotation mode or no rotation - use simple cache
+                if image_path in self.image_cache:
+                    photo = self.image_cache[image_path]
+                    self.image_label.configure(image=photo, text="")
+                    self.image_label.image = photo
+                    return
+                
+                # Handle image files without visual rotation
+                photo = self.load_and_resize_image(image_path, apply_visual_rotation=False)
+                if photo:
+                    self.image_label.configure(image=photo, text="")
+                    self.image_label.image = photo
+                    self.image_cache[image_path] = photo
+                else:
+                    self.image_label.configure(image=None, text="Error loading image")
+                    self.image_label.image = None
                     
         except Exception as e:
             self.image_label.configure(image=None, text=f"Error loading image: {str(e)}")
@@ -864,13 +922,13 @@ class App(ctk.CTk):
         # Start a thread to clear the error after the specified duration
         threading.Thread(target=clear_error, daemon=True).start()
 
-    def load_and_resize_image(self, image_path):
+    def load_and_resize_image(self, image_path, apply_visual_rotation=False):
         """Load and resize an image to fit the green section"""
         try:
             image = Image.open(image_path)
             
-            # Apply rotation if it's an image file
-            if self.is_image_file(image_path) and self.current_rotation != 0:
+            # Apply visual rotation if requested and in visual rotation mode
+            if apply_visual_rotation and self.current_rotation != 0:
                 image = image.rotate(-self.current_rotation, expand=True)
             
             self.green_section.update_idletasks()
@@ -909,11 +967,10 @@ class App(ctk.CTk):
         for i in range(start_index, end_index):
             if i < len(self.directory_images):
                 image_path = self.directory_images[i]
-                images_to_keep.add(image_path)
-                # Also keep rotated versions for images
                 if self.is_image_file(image_path):
-                    for rot in [0, 90, 180, 270]:
-                        images_to_keep.add(f"{image_path}_rot_{rot}")
+                    images_to_keep.add(image_path)
+                else:
+                    images_to_keep.add(image_path)
         
         keys_to_remove = [key for key in self.image_cache.keys() if key not in images_to_keep]
         for key in keys_to_remove:
@@ -923,19 +980,14 @@ class App(ctk.CTk):
             for i in range(start_index, end_index):
                 if i < len(self.directory_images):
                     image_path = self.directory_images[i]
-                    # Only preload original orientation to avoid excessive memory usage
-                    cache_key = image_path
-                    if cache_key not in self.image_cache:
-                        try:
-                            # Temporarily set rotation to 0 for preloading
-                            original_rotation = self.current_rotation
-                            self.current_rotation = 0
-                            photo = self.load_and_resize_image(image_path)
-                            self.current_rotation = original_rotation
-                            if photo:
-                                self.image_cache[cache_key] = photo
-                        except Exception:
-                            pass
+                    if self.is_image_file(image_path):
+                        if image_path not in self.image_cache:
+                            try:
+                                photo = self.load_and_resize_image(image_path)
+                                if photo:
+                                    self.image_cache[image_path] = photo
+                            except Exception:
+                                pass
         
         threading.Thread(target=preload_worker, daemon=True).start()
 
@@ -987,6 +1039,7 @@ class App(ctk.CTk):
             raise PermissionError("Permission denied accessing directory")
         except Exception as e:
             raise Exception(f"Error accessing directory: {str(e)}")
+        
     def load_first_image_file(self):
         """Load and display the first image file in the directory images list"""
         if hasattr(self, 'directory_images') and self.directory_images:
@@ -1041,7 +1094,67 @@ class App(ctk.CTk):
         image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp', '.svg', '.ico', '.tga', '.psd'}
         _, ext = os.path.splitext(file_path.lower())
         return ext in image_extensions
-
+    
+    def rotate_image_file(self, image_path, degrees):
+        """Rotate an image file by the specified degrees and save it back to the file"""
+        try:
+            # Clear cache for this image first
+            cache_keys_to_remove = [key for key in self.image_cache.keys() if key.startswith(image_path)]
+            for key in cache_keys_to_remove:
+                del self.image_cache[key]
+            
+            # Open the original image
+            with Image.open(image_path) as image:
+                # Convert to RGB if necessary to ensure compatibility
+                if image.mode in ('RGBA', 'LA', 'P'):
+                    # For images with transparency or palette, convert to RGBA first
+                    if image.mode == 'P' and 'transparency' in image.info:
+                        image = image.convert('RGBA')
+                    elif image.mode == 'P':
+                        image = image.convert('RGB')
+                
+                # Rotate the image
+                rotated_image = image.rotate(-degrees, expand=True)
+                
+                # Save the rotated image back to the file
+                # Preserve the original format
+                original_format = image.format
+                if original_format in ['JPEG', 'JPG']:
+                    # For JPEG, convert to RGB if it's RGBA
+                    if rotated_image.mode == 'RGBA':
+                        # Create a white background and paste the image onto it
+                        rgb_image = Image.new('RGB', rotated_image.size, (255, 255, 255))
+                        rgb_image.paste(rotated_image, mask=rotated_image.split()[-1] if rotated_image.mode == 'RGBA' else None)
+                        rotated_image = rgb_image
+                    rotated_image.save(image_path, format='JPEG', quality=95, optimize=True)
+                elif original_format == 'PNG':
+                    rotated_image.save(image_path, format='PNG', optimize=True)
+                else:
+                    # For other formats, try to save in the original format
+                    try:
+                        rotated_image.save(image_path, format=original_format)
+                    except:
+                        # If that fails, save as PNG
+                        rotated_image.save(image_path, format='PNG')
+            
+            # Reset rotation tracking since we've applied it to the file
+            if image_path in self.image_rotations:
+                del self.image_rotations[image_path]
+            self.current_rotation = 0
+            
+            # Refresh the display
+            self.display_image(image_path)
+            
+            # Update file details to reflect any changes
+            file_details = self.get_file_details(image_path)
+            self.image_details_label.configure(text=file_details)
+            
+        except Exception as e:
+            # If rotation fails, show an error but don't crash
+            print(f"Error rotating image: {str(e)}")
+            # Still try to display the original image
+            self.display_image(image_path)
+        
 
 def main():
     app = App()
