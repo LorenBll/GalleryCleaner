@@ -25,7 +25,6 @@ if [ ! -f "src/main.py" ]; then
 fi
 
 # Run the application
-echo "Running GalleryCleaner..."
 python src/main.py
 
 # Check if the application ran successfully
