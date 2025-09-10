@@ -35,6 +35,3 @@ if [ $exit_code -ne 0 ]; then
     echo "Application exited with an error (code $exit_code)"
     exit $exit_code
 fi
-
-echo
-echo "Application closed successfully."

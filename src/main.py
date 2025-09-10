@@ -9,6 +9,7 @@ from PIL import Image, ImageTk
 import send2trash
 
 
+
 class ToolTip:
     """Custom tooltip class for customtkinter widgets"""
     def __init__(self, widget:ctk.CTk, text:str="widget info") -> None:
@@ -48,6 +49,7 @@ class ToolTip:
             tw.destroy()
 
 
+
 class App(ctk.CTk):
     
     
@@ -55,6 +57,8 @@ class App(ctk.CTk):
     # ===== SETUP METHODS =====
     
     def __init__(self) -> None:
+        """Initialize the main application window and UI components."""
+        
         super().__init__()
         
         # Configure window

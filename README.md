@@ -74,7 +74,7 @@ Managing large collections of photos can be overwhelming. Traditional file manag
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/GalleryCleaner.git
+   git clone https://github.com/LorenBll/GalleryCleaner.git
    cd GalleryCleaner
    ```
 
