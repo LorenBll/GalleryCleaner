@@ -1,0 +1,3 @@
+customtkinter
+pillow
+send2trash
