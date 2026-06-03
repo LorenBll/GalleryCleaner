@@ -1,153 +1,147 @@
 # GalleryCleaner
 
-Lightweight keyboard-first desktop application to review image folders quickly and move unwanted files to your system trash with minimal interactions.
-
-## Table of Contents
-
-- [About](#about)
-- [Features](#features)
-- [Project Structure](#project-structure)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Keyboard Shortcuts](#keyboard-shortcuts)
-- [Tech Stack](#tech-stack)
-- [License](#license)
+GalleryCleaner is a local keyboard-first image review application. It solves the problem of cleaning large image collections quickly by minimizing clicks, dialogs, and navigation friction during image triage.
 
 ## About
 
-Cleaning large photo folders with a normal file manager is slow: too many clicks, too many dialogs, and too much context switching.
+GalleryCleaner is scoped to rapid image-folder review and provides a focused desktop workflow for navigating, rotating, refreshing, and trashing images with minimal interaction overhead.
 
-GalleryCleaner provides a focused full-screen workflow where you can preview, navigate, rotate, and trash images rapidly using keyboard shortcuts, enabling rapid curation of large image collections with minimal friction.
+The application uses a fixed-size interface optimized for continuous keyboard-driven operation while preloading nearby images to improve browsing responsiveness.
+
+Image deletion is performed through the operating system trash/recycle-bin mechanism so removed files remain recoverable outside the application.
+
+## Setup
+
+1. Install the Python dependencies with `pip install -r requirements.txt`.
+2. Ensure the `resources/images/` directory remains in place so application icons can be loaded.
+3. Optionally use the provided setup scripts to create a local virtual environment automatically.
+
+## Run
+
+1. Windows: run `scripts\run.bat`.
+2. Unix-like systems: run `bash scripts/run.sh`.
+3. Manual: run `python src/main.py` from the project root.
 
 ## Features
 
-- **Keyboard-First Navigation:** Primary navigation via keyboard (`A`/`D` or arrow keys) for speed
-- **One-Key Trash Action:** Delete unwanted images instantly with single key press
-- **Safe Deletion:** Uses system trash (`send2trash`) - deleted files are recoverable
-- **Image Rotation:** Visual preview rotation plus persistent file rotation
-- **Recursive Scanning:** Optional recursive directory scanning for batch processing
-- **Rapid Refresh:** Quick iteration with refresh and navigation shortcuts
-- **Modern UI:** Built with CustomTkinter for clean, native-looking interface
-- **Cross-Platform:** Works on Windows, macOS, and Linux
+### Keyboard-First Workflow
+
+Primary navigation and actions are designed around keyboard shortcuts for rapid image review.
+
+### Safe File Removal
+
+Images are moved to the system trash using `send2trash` instead of being permanently deleted.
+
+### Recursive Directory Review
+
+Optional recursive scanning allows images from nested subdirectories to be reviewed as a single navigation queue.
+
+### Persistent or Visual Rotation
+
+Image rotation supports two modes:
+
+* visual-only rotation that affects preview state,
+* persistent file-level rotation written directly to disk.
+
+### Image Preloading
+
+Nearby images are asynchronously preloaded into memory to improve navigation responsiveness while browsing large collections.
+
+### File Metadata Preview
+
+The viewer displays:
+
+* filename,
+* file type,
+* file size,
+* resolution,
+* creation timestamp,
+* modification timestamp.
+
+### Cross-Platform Desktop Application
+
+GalleryCleaner works on Windows, macOS, and Linux through a CustomTkinter-based desktop interface.
+
+## Supported Image Formats
+
+GalleryCleaner currently recognizes the following image extensions:
+
+* `.jpg`
+* `.jpeg`
+* `.png`
+* `.gif`
+* `.bmp`
+* `.tiff`
+* `.webp`
+* `.svg`
+* `.ico`
+* `.tga`
+* `.psd`
+
+## Usage
+
+1. Launch the application.
+2. Enter an absolute directory path containing images.
+3. Optionally enable recursive scanning to include subdirectories.
+4. Submit the directory path to begin browsing.
+5. Navigate through images and move unwanted files to trash using keyboard shortcuts or UI controls.
+
+If no supported images are found, the application returns to the directory-selection workflow.
+
+## Keyboard Shortcuts
+
+| Key                 | Action                         |
+| ------------------- | ------------------------------ |
+| `A` / `Left Arrow`  | Previous image                 |
+| `D` / `Right Arrow` | Next image                     |
+| `S` / `Down Arrow`  | Move current image to trash    |
+| `Ctrl+Q`            | Rotate image counter-clockwise |
+| `Ctrl+E`            | Rotate image clockwise         |
+| `Ctrl+R`            | Refresh current directory      |
+| `Esc`               | Return to directory selection  |
+| `Enter`             | Submit directory path          |
 
 ## Project Structure
 
 ```text
 GalleryCleaner/
 ├── src/
-│   └── main.py                    # Main desktop application
+│   └── main.py
 ├── scripts/
-│   ├── setup.bat                  # Windows setup script
-│   ├── setup.sh                   # Unix/macOS setup script
-│   ├── run.bat                    # Windows run script
-│   └── run.sh                     # Unix/macOS run script
+│   ├── setup.bat
+│   ├── setup.sh
+│   ├── run.bat
+│   └── run.sh
 ├── resources/
-│   └── images/                    # Application icons and assets
+│   └── images/
 ├── docs/
 │   └── images/
-│       └── screenshot.png         # UI screenshot
-├── requirements.txt               # Python dependencies
+├── requirements.txt
 ├── LICENSE
 └── README.md
 ```
 
-Project organization:
-- **src/**: Main application source code
-- **scripts/**: Setup and runtime automation scripts
-- **resources/**: Application assets (icons, images)
-- **docs/**: Documentation and screenshots
+## Error Handling
 
-## Installation
+GalleryCleaner validates:
 
-### Prerequisites
+* directory existence,
+* directory permissions,
+* readable image availability.
 
-- Python 3.7 or newer
-- Windows, macOS, or Linux
-
-### Quick Start
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/LorenBll/GalleryCleaner.git
-   cd GalleryCleaner
-   ```
-
-2. **Run the setup script:**
-   - **Windows:**
-     ```bash
-     scripts\setup.bat
-     ```
-   - **macOS/Linux:**
-     ```bash
-     chmod +x scripts/setup.sh scripts/run.sh
-     ./scripts/setup.sh
-     ```
-
-3. **Run the application:**
-   - **Windows:**
-     ```bash
-     scripts\run.bat
-     ```
-   - **macOS/Linux:**
-     ```bash
-     ./scripts/run.sh
-     ```
-
-The setup script creates a virtual environment (`.venv`) and installs dependencies from `requirements.txt`.
-
-### Manual Execution
-
-1. **Create and activate virtual environment:**
-   ```bash
-   python -m venv .venv
-   ```
-   - **Windows:**
-     ```bash
-     .venv\Scripts\activate
-     ```
-   - **macOS/Linux:**
-     ```bash
-     source .venv/bin/activate
-     ```
-
-2. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Start the application:**
-   ```bash
-   python src/main.py
-   ```
-
-## Usage
-
-1. Launch the application
-2. Enter path to an image directory
-3. Optionally enable recursive mode to scan subdirectories
-4. Navigate through images and trash unwanted files
-5. Use keyboard shortcuts for rapid navigation and deletion
-
-## Keyboard Shortcuts
-
-| Key | Action |
-|-----|--------|
-| `A` / `Left Arrow` | Navigate to previous image |
-| `D` / `Right Arrow` | Navigate to next image |
-| `S` / `Down Arrow` | Move current image to trash |
-| `Ctrl+Q` | Rotate image left |
-| `Ctrl+E` | Rotate image right |
-| `Ctrl+R` | Refresh folder contents |
-| `Esc` / `Ctrl+B` | Return to folder path input |
-| `Enter` | Submit folder path |
+Unreadable or unsupported images fail gracefully during loading without terminating the application.
 
 ## Tech Stack
 
-- **Language:** Python 3.7+
-- **GUI Framework:** CustomTkinter
-- **Image Processing:** Pillow
-- **File Handling:** Send2Trash (safe deletion to system trash)
+* Python
+* CustomTkinter
+* Pillow
+* Send2Trash
 
 ## License
 
-This project is licensed under the terms specified in [LICENSE](LICENSE).
+* [LICENSE](LICENSE)
+
+## Author
+
+* [LorenBll](https://github.com/LorenBll)
