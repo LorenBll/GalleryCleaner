@@ -140,9 +140,7 @@ Unreadable or unsupported images fail gracefully during loading without terminat
 - **File Removal:** Send2Trash
 
 ## License
-
 - [LICENSE](LICENSE)
 
 ## Author
-
 - [LorenBll](https://github.com/LorenBll)
