@@ -15,6 +15,7 @@ Image deletion is performed through the operating system trash/recycle-bin mecha
 1. Install the Python dependencies with `pip install -r requirements.txt`.
 2. Ensure the `resources/images/` directory remains in place so application icons can be loaded.
 3. Optionally use the provided setup scripts to create a local virtual environment automatically.
+4. Leave the project structure intact so the application can find `resources/` and `src/`.
 
 ## Run
 
@@ -40,8 +41,8 @@ Optional recursive scanning allows images from nested subdirectories to be revie
 
 Image rotation supports two modes:
 
-* visual-only rotation that affects preview state,
-* persistent file-level rotation written directly to disk.
+- visual-only rotation that affects preview state,
+- persistent file-level rotation written directly to disk.
 
 ### Image Preloading
 
@@ -51,12 +52,12 @@ Nearby images are asynchronously preloaded into memory to improve navigation res
 
 The viewer displays:
 
-* filename,
-* file type,
-* file size,
-* resolution,
-* creation timestamp,
-* modification timestamp.
+- filename,
+- file type,
+- file size,
+- resolution,
+- creation timestamp,
+- modification timestamp.
 
 ### Cross-Platform Desktop Application
 
@@ -66,17 +67,17 @@ GalleryCleaner works on Windows, macOS, and Linux through a CustomTkinter-based 
 
 GalleryCleaner currently recognizes the following image extensions:
 
-* `.jpg`
-* `.jpeg`
-* `.png`
-* `.gif`
-* `.bmp`
-* `.tiff`
-* `.webp`
-* `.svg`
-* `.ico`
-* `.tga`
-* `.psd`
+- `.jpg`
+- `.jpeg`
+- `.png`
+- `.gif`
+- `.bmp`
+- `.tiff`
+- `.webp`
+- `.svg`
+- `.ico`
+- `.tga`
+- `.psd`
 
 ## Usage
 
@@ -125,23 +126,23 @@ GalleryCleaner/
 
 GalleryCleaner validates:
 
-* directory existence,
-* directory permissions,
-* readable image availability.
+- directory existence,
+- directory permissions,
+- readable image availability.
 
 Unreadable or unsupported images fail gracefully during loading without terminating the application.
 
 ## Tech Stack
 
-* Python
-* CustomTkinter
-* Pillow
-* Send2Trash
+- **Language:** Python
+- **UI Framework:** CustomTkinter
+- **Image Processing:** Pillow
+- **File Removal:** Send2Trash
 
 ## License
 
-* [LICENSE](LICENSE)
+- [LICENSE](LICENSE)
 
 ## Author
 
-* [LorenBll](https://github.com/LorenBll)
+- [LorenBll](https://github.com/LorenBll)
