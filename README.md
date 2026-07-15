@@ -139,6 +139,9 @@ Unreadable or unsupported images fail gracefully during loading without terminat
 - **Image Processing:** Pillow
 - **File Removal:** Send2Trash
 
+## Support
+- Open an issue on [GitHub](https://github.com/LorenBll/GalleryCleaner/issues) for bug reports, feature requests, or help.
+
 ## License
 - [LICENSE](LICENSE)
 
