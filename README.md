@@ -6,9 +6,15 @@ GalleryCleaner is a local keyboard-first image review application. It solves the
 
 GalleryCleaner is scoped to rapid image-folder review and provides a focused desktop workflow for navigating, rotating, refreshing, and trashing images with minimal interaction overhead.
 
-The application uses a fixed-size interface optimized for continuous keyboard-driven operation while preloading nearby images to improve browsing responsiveness.
+**Features:**
 
-Image deletion is performed through the operating system trash/recycle-bin mechanism so removed files remain recoverable outside the application.
+- **Keyboard-First Workflow** — primary navigation and actions are designed around keyboard shortcuts for rapid image review.
+- **Safe File Removal** — images are moved to the system trash using `send2trash` instead of being permanently deleted.
+- **Recursive Directory Review** — optional recursive scanning allows images from nested subdirectories to be reviewed as a single navigation queue.
+- **Persistent or Visual Rotation** — image rotation supports two modes: visual-only rotation that affects preview state, and persistent file-level rotation written directly to disk.
+- **Image Preloading** — nearby images are asynchronously preloaded into memory to improve navigation responsiveness while browsing large collections.
+- **File Metadata Preview** — the viewer displays filename, file type, file size, resolution, creation timestamp, and modification timestamp.
+- **Cross-Platform Desktop Application** — GalleryCleaner works on Windows, macOS, and Linux through a CustomTkinter-based desktop interface.
 
 ## Setup
 
@@ -23,61 +29,11 @@ Image deletion is performed through the operating system trash/recycle-bin mecha
 2. Unix-like systems: run `bash scripts/run.sh`.
 3. Manual: run `python src/main.py` from the project root.
 
-## Features
-
-### Keyboard-First Workflow
-
-Primary navigation and actions are designed around keyboard shortcuts for rapid image review.
-
-### Safe File Removal
-
-Images are moved to the system trash using `send2trash` instead of being permanently deleted.
-
-### Recursive Directory Review
-
-Optional recursive scanning allows images from nested subdirectories to be reviewed as a single navigation queue.
-
-### Persistent or Visual Rotation
-
-Image rotation supports two modes:
-
-- visual-only rotation that affects preview state,
-- persistent file-level rotation written directly to disk.
-
-### Image Preloading
-
-Nearby images are asynchronously preloaded into memory to improve navigation responsiveness while browsing large collections.
-
-### File Metadata Preview
-
-The viewer displays:
-
-- filename,
-- file type,
-- file size,
-- resolution,
-- creation timestamp,
-- modification timestamp.
-
-### Cross-Platform Desktop Application
-
-GalleryCleaner works on Windows, macOS, and Linux through a CustomTkinter-based desktop interface.
-
 ## Supported Image Formats
 
 GalleryCleaner currently recognizes the following image extensions:
 
-- `.jpg`
-- `.jpeg`
-- `.png`
-- `.gif`
-- `.bmp`
-- `.tiff`
-- `.webp`
-- `.svg`
-- `.ico`
-- `.tga`
-- `.psd`
+- `.jpg`, `.jpeg`, `.png`, `.gif`, `.bmp`, `.tiff`, `.webp`, `.svg`, `.ico`, `.tga`, `.psd`
 
 ## Usage
 
@@ -91,16 +47,16 @@ If no supported images are found, the application returns to the directory-selec
 
 ## Keyboard Shortcuts
 
-| Key                 | Action                         |
-| ------------------- | ------------------------------ |
-| `A` / `Left Arrow`  | Previous image                 |
-| `D` / `Right Arrow` | Next image                     |
-| `S` / `Down Arrow`  | Move current image to trash    |
-| `Ctrl+Q`            | Rotate image counter-clockwise |
-| `Ctrl+E`            | Rotate image clockwise         |
-| `Ctrl+R`            | Refresh current directory      |
-| `Esc`               | Return to directory selection  |
-| `Enter`             | Submit directory path          |
+| Key | Action |
+|---|---|
+| `A` / `Left Arrow` | Previous image |
+| `D` / `Right Arrow` | Next image |
+| `S` / `Down Arrow` | Move current image to trash |
+| `Ctrl+Q` | Rotate image counter-clockwise |
+| `Ctrl+E` | Rotate image clockwise |
+| `Ctrl+R` | Refresh current directory |
+| `Esc` | Return to directory selection |
+| `Enter` | Submit directory path |
 
 ## Project Structure
 
