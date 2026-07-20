@@ -393,6 +393,49 @@ body.cleaning-complete {
     color: #9ca3af;
 }
 
+.search-go {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color 0.15s ease, background 0.15s ease;
+}
+
+.search-go:hover {
+    color: var(--ink);
+    background: rgba(128,128,128,0.1);
+}
+
+.search-go:active {
+    background: rgba(128,128,128,0.2);
+}
+
+.search-go:hover::after {
+    content: attr(data-label);
+    position: absolute;
+    left: calc(100% + 8px);
+    top: 50%;
+    transform: translateY(-50%);
+    white-space: nowrap;
+    font-size: 0.75rem;
+    font-family: inherit;
+    line-height: normal;
+    color: #6b7280;
+    background: #ffffff;
+    border: 1px solid var(--border);
+    padding: 2px 8px;
+    border-radius: 6px;
+    pointer-events: none;
+    z-index: 2147483647;
+}
+
 /* ===== Filter Tweak ===== */
 
 .filter-tweak {
@@ -445,7 +488,7 @@ body.cleaning-complete {
     color: #6b7280;
     background: #ffffff;
     border: 1px solid var(--border);
-    padding: 4px 8px;
+    padding: 2px 8px;
     border-radius: 6px;
     pointer-events: none;
     z-index: 2147483647;
@@ -488,7 +531,7 @@ body.cleaning-complete {
     color: #6b7280;
     background: #ffffff;
     border: 1px solid var(--border);
-    padding: 4px 8px;
+    padding: 2px 8px;
     border-radius: 6px;
     pointer-events: none;
     z-index: 2147483647;
@@ -515,7 +558,7 @@ body.cleaning-complete {
     color: #6b7280;
     background: #ffffff;
     border: 1px solid var(--border);
-    padding: 4px 8px;
+    padding: 2px 8px;
     border-radius: 6px;
     pointer-events: none;
     z-index: 2147483647;
@@ -538,6 +581,64 @@ body.cleaning-complete {
     border-radius: 999px;
     background: #ffffff;
     margin: 0;
+}
+
+/* ===== Search Overlay ===== */
+
+.search-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    transition: opacity 0.25s ease;
+}
+
+.search-overlay.hidden {
+    display: none;
+}
+
+/* ===== Progress Panel ===== */
+
+.progress-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    min-width: 280px;
+    max-width: 400px;
+}
+
+.progress-bar-track {
+    width: 100%;
+    height: 8px;
+    background: var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.progress-info {
+    font-size: 0.85rem;
+    color: var(--ink);
+    text-align: center;
+}
+
+.progress-detail {
+    font-size: 0.75rem;
+    color: var(--muted);
+    text-align: center;
 }
 
 @media (max-width: 640px) {

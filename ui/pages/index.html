@@ -34,7 +34,10 @@
             <div class="search-bar hidden" id="searchBar">
                 <div class="search-input-row">
                     <svg class="search-lens" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                    <input type="text" id="searchInput" placeholder="Search files...">
+                    <input type="text" id="searchInput" placeholder="Search files..." oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')">
+                    <button class="search-go" id="searchGo" data-label="Search">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </button>
                 </div>
                 <div class="filter-tweak" id="filterTweak">
                     <span class="filter-tweak-reset" id="filterTweakReset">
@@ -48,6 +51,16 @@
                     </span>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div class="search-overlay hidden" id="searchOverlay">
+        <div class="progress-panel" id="progressPanel">
+            <div class="progress-bar-track">
+                <div class="progress-bar-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-info" id="progressInfo">Starting...</div>
+            <div class="progress-detail" id="progressDetail"></div>
         </div>
     </div>
 
@@ -342,6 +355,92 @@
                 tweak.classList.remove('active');
                 updateResetVisibility();
             });
+
+            function performSearch() {
+                var input = document.getElementById('searchInput');
+                var query = input.value.trim();
+                if (!query) return;
+
+                var overlay = document.getElementById('searchOverlay');
+                var fill = document.getElementById('progressFill');
+                var info = document.getElementById('progressInfo');
+                var detail = document.getElementById('progressDetail');
+                var source = null;
+
+                overlay.classList.remove('hidden');
+                fill.style.width = '0%';
+                info.textContent = 'Starting...';
+                detail.textContent = '';
+
+                fetch('/api/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query })
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.error) {
+                        info.textContent = 'Error: ' + data.error;
+                        setTimeout(function() { overlay.classList.add('hidden'); }, 2000);
+                        return;
+                    }
+                    var searchId = data.search_id;
+                    source = new EventSource('/api/search/progress/' + searchId);
+                    source.onmessage = function(event) {
+                        var p = JSON.parse(event.data);
+                        if (!p || !p.status) return;
+
+                        switch (p.status) {
+                            case 'queued':
+                                info.textContent = 'Queued...';
+                                break;
+                            case 'running':
+                                if (p.phase === 'filtering') {
+                                    info.textContent = 'Filtering cached results...';
+                                } else if (p.phase === 'loading_model') {
+                                    info.textContent = 'Loading CLIP model...';
+                                } else if (p.phase === 'assigning_workers') {
+                                    info.textContent = 'Assigning workers...';
+                                } else if (p.phase === 'workers_assigned') {
+                                    info.textContent = p.total_workers + ' workers assigned';
+                                } else if (p.phase && p.phase.startsWith('platoon_')) {
+                                    var pc = p.total_images > 0 ? Math.round((p.processed / p.total_images) * 100) : 0;
+                                    fill.style.width = Math.min(pc, 100) + '%';
+                                    info.textContent = 'Platoon ' + p.current_platoon + '/' + p.total_platoons + ' (' + p.processed + '/' + p.total_images + ' images)';
+                                    detail.textContent = p.total_workers + ' workers total';
+                                } else if (p.phase === 'persisting') {
+                                    info.textContent = 'Saving results...';
+                                }
+                                break;
+                            case 'complete':
+                                fill.style.width = '100%';
+                                info.textContent = 'Complete - ' + p.results.total + ' results';
+                                detail.textContent = p.results.workers + ' workers in ' + p.results.platoons + ' platoons';
+                                if (source) { source.close(); }
+                                setTimeout(function() { overlay.classList.add('hidden'); }, 2000);
+                                break;
+                            case 'error':
+                                info.textContent = 'Error: ' + (p.error || 'Unknown');
+                                detail.textContent = '';
+                                if (source) { source.close(); }
+                                setTimeout(function() { overlay.classList.add('hidden'); }, 3000);
+                                break;
+                        }
+                    };
+                    source.onerror = function() {
+                        info.textContent = 'Connection lost';
+                        if (source) { source.close(); }
+                        setTimeout(function() { overlay.classList.add('hidden'); }, 2000);
+                    };
+                })
+                .catch(function(err) {
+                    info.textContent = 'Search request failed';
+                    detail.textContent = String(err);
+                    setTimeout(function() { overlay.classList.add('hidden'); }, 2000);
+                });
+            }
+
+            document.getElementById('searchGo').addEventListener('click', performSearch);
 
             function triggerLoadIn() {
                 var items = [
