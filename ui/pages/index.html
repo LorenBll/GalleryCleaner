@@ -325,6 +325,13 @@
                 }
             });
 
+            if (window._AI_ENABLED === false) {
+                var searchArea = document.getElementById('searchArea');
+                if (searchArea) { searchArea.style.display = 'none'; }
+                var searchOverlay = document.getElementById('searchOverlay');
+                if (searchOverlay) { searchOverlay.style.display = 'none'; }
+            }
+
             if (window._DISKIDENTIFIER_ERROR) {
                 var form = document.getElementById('clean-form');
                 form.innerHTML = '<div class="error-state">' + window._DISKIDENTIFIER_ERROR + '</div>';

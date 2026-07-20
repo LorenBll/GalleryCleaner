@@ -25,6 +25,8 @@ SERVICE_PORT = None
 
 SERVICEHANDLER_HASH = None
 
+_AI_ENABLED = True
+
 _IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".tiff", ".tif"}
 
 _DISKIDENTIFIER_PORT: int | None = None
@@ -436,7 +438,7 @@ def _load_configuration() -> dict:
 
 
 def _initialize_service_config() -> None:
-    global SERVICE_PORT
+    global SERVICE_PORT, _AI_ENABLED
     config = _load_configuration()
 
     configured_port = config.get("port", 49160)
@@ -447,6 +449,8 @@ def _initialize_service_config() -> None:
         configured_port = 49160
 
     SERVICE_PORT = configured_port
+
+    _AI_ENABLED = config.get("aiEnabled", True)
 
 
 # ============================================================================
@@ -573,10 +577,15 @@ def index() -> str:
     if request.method == "HEAD":
         return _head_response()
     content = _load_ui_page("index.html")
+    extra = ""
+    if not _AI_ENABLED:
+        extra += 'window._AI_ENABLED = false;\n'
     if _DISKIDENTIFIER_PORT is None:
+        extra += 'window._DISKIDENTIFIER_ERROR = "DiskIdentifier could not be found.";\n'
+    if extra:
         content = content.replace(
             "<script>",
-            '<script>window._DISKIDENTIFIER_ERROR = "DiskIdentifier could not be found.";\n',
+            f"<script>{extra}",
             1,
         )
     return render_template_string(content)
@@ -668,22 +677,26 @@ def check_path() -> tuple:
     if not _path_has_images(path, recursive):
         return _error_response("The selected directory does not contain any image files.", 400)
 
-    if _DISKIDENTIFIER_PORT is None:
-        return _error_response("DiskIdentifier is required but not available.", 503)
+    if _AI_ENABLED:
+        if _DISKIDENTIFIER_PORT is None:
+            return _error_response("DiskIdentifier is required but not available.", 503)
 
-    _open_image_files(path, recursive)
+        _open_image_files(path, recursive)
+
+        _load_and_filter_index(path)
+    else:
+        _INDEXED_IMAGES.clear()
 
     _checked_path = path
     _checked_recursive = recursive
-
-    _load_and_filter_index(path)
 
     return _success_response(
         {
             "path": _checked_path,
             "recursive": _checked_recursive,
-            "indexed": len(_INDEXED_IMAGES),
+            "indexed": len(_INDEXED_IMAGES) if _AI_ENABLED else 0,
             "status": "confirmed",
+            "ai_enabled": _AI_ENABLED,
         }
     )
 
@@ -692,6 +705,9 @@ def check_path() -> tuple:
 def search() -> tuple:
     if request.method == "OPTIONS":
         return _options_response(["POST", "OPTIONS"])
+
+    if not _AI_ENABLED:
+        return _error_response("AI operations are disabled.", 503)
 
     data = request.get_json(silent=True)
     if not data or not isinstance(data, dict):
@@ -1037,6 +1053,9 @@ def _run_search(search_id: str, query: str) -> None:
 
 @app.route("/api/search/progress/<search_id>", methods=["GET"])
 def search_progress(search_id: str) -> Response:
+    if not _AI_ENABLED:
+        return _error_response("AI operations are disabled.", 503)
+
     def generate():
         while True:
             with _SEARCH_PROGRESS_LOCK:
@@ -1255,7 +1274,8 @@ if __name__ == "__main__":
         _initialize_service_config()
         _register_ui_routes(app)
 
-        _resolve_diskidentifier_port()
+        if _AI_ENABLED:
+            _resolve_diskidentifier_port()
     except Exception as exc:
         logger.error(f"Failed to load configuration: {exc}")
         exit(1)
@@ -1269,19 +1289,23 @@ if __name__ == "__main__":
         )
         servicehandler_thread.start()
 
-    diskidentifier_thread = threading.Thread(
-        target=_diskidentifier_keepalive_forever,
-        name="diskidentifier-keepalive",
-        daemon=True,
-    )
-    diskidentifier_thread.start()
+    if _AI_ENABLED:
+        diskidentifier_thread = threading.Thread(
+            target=_diskidentifier_keepalive_forever,
+            name="diskidentifier-keepalive",
+            daemon=True,
+        )
+        diskidentifier_thread.start()
 
     try:
         logger.info("=" * 50)
-        logger.info("  Local API Server")
+        mode_str = "AI" if _AI_ENABLED else "Non-AI"
+        logger.info(f"  GalleryCleaner ({mode_str} mode)")
         logger.info("=" * 50)
         logger.info(f"Binding to: http://{SERVICE_HOST}:{SERVICE_PORT}")
         logger.info(f"Mode: private (local only)")
+        if not _AI_ENABLED:
+            logger.info("AI operations disabled via configuration")
         logger.info("Server starting...")
 
         app.run(host=SERVICE_HOST, port=SERVICE_PORT, debug=False, threaded=True)

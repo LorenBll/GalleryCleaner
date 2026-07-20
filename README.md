@@ -9,11 +9,11 @@ GalleryCleaner binds to `127.0.0.1` on port `49160` and rejects API calls that d
 **Features:**
 
 - **Path validation** — check whether a directory contains image files and register it for searching.
-- **CLIP-based semantic search** — search indexed images using natural language text queries.
+- **CLIP-based semantic search** — search indexed images using natural language text queries (can be disabled in config).
 - **Caching** — search results are persisted to `resources/search_index.json` so repeated queries skip recomputation.
 - **Parallel processing** — images are split into worker batches and processed in platoons for efficient GPU/CPU utilization.
 - **SSE progress streaming** — get real-time updates as a search runs, including filtering, model loading, and worker progress.
-- **DiskIdentifier integration** — resolves drive identities for portable path references across reboots.
+- **DiskIdentifier integration** — resolves drive identities for portable path references across reboots (not required when AI is disabled).
 - **ServiceHandler registration** — auto-registers all API endpoints with ServiceHandler for service discovery.
 
 > **Safety notice**: GalleryCleaner is intended only for environments where safety is not a major risk — the chances of malevolent actors are low, and the consequences of an eventual mishap are low.
@@ -23,6 +23,18 @@ GalleryCleaner binds to `127.0.0.1` on port `49160` and rejects API calls that d
 1. Install Python dependencies: `pip install -r requirements.txt`.
 2. Review `resources/configuration.json` to adjust the port, worker settings, and ServiceHandler integration.
 3. Leave the project structure intact so the service can find `resources/` and `src/`.
+
+### Configuration File (`resources/configuration.json`)
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `port` | number | `49160` | TCP port for the service. |
+| `diskidentifierPort` | number | `49157` | Port of the DiskIdentifier service (only used when `aiEnabled` is `true`). |
+| `servicehandlerEnabled` | boolean | `true` | Whether to register with ServiceHandler for service discovery. |
+| `servicehandlerPort` | number | `49155` | Port of the ServiceHandler service. |
+| `aiEnabled` | boolean | `true` | When `false`, AI operations (CLIP search, search index, search UI) are disabled and DiskIdentifier is not required. |
+| `maxWorkerMB` | number | `50` | Maximum megabytes of image data per worker. |
+| `maxWorkersPerPlatoon` | number | `15` | Maximum concurrent workers per platoon. |
 
 ### Environment Variables
 
@@ -45,6 +57,12 @@ All `/api/*` endpoints are local-device only. Requests from non-local addresses 
 - API responses use `Connection: close`.
 
 No API key authentication is currently implemented for GalleryCleaner endpoints. Only localhost access control is enforced.
+
+When `aiEnabled` is `false` in the configuration, all AI-related functionality is disabled:
+- The `/api/search` and `/api/search/progress/<search_id>` endpoints return `503`.
+- The `/api/check/path` endpoint does not require DiskIdentifier and skips image indexing.
+- The search UI is not rendered on the dashboard.
+- DiskIdentifier keepalive threads are not started.
 
 ## API Endpoints
 
@@ -78,14 +96,16 @@ Validate a directory path for image content, index its files, and load/search th
       "path": "C:\\Users\\Me\\Pictures",
       "recursive": true,
       "indexed": 1500,
-      "status": "confirmed"
+      "status": "confirmed",
+      "ai_enabled": true
     }
     ```
+    When `aiEnabled` is `false`, the `indexed` field is `0` and `ai_enabled` is `false`.
   - `400` -> `{ "error": "Path is required." }`
   - `400` -> `{ "error": "The specified path does not exist or is not accessible." }`
   - `400` -> `{ "error": "The selected directory does not contain any image files." }`
   - `404` -> `{ "error": "The specified path does not exist or is not accessible." }`
-  - `503` -> `{ "error": "DiskIdentifier is required but not available." }`
+  - `503` -> `{ "error": "DiskIdentifier is required but not available." }` (only returned when `aiEnabled` is `true`)
 
 ### `POST /api/search` (also `HEAD`, `OPTIONS`)
 Start a CLIP-based semantic image search. Returns a `search_id` that can be polled via the progress endpoint.
@@ -99,6 +119,7 @@ Start a CLIP-based semantic image search. Returns a `search_id` that can be poll
   - `400` -> `{ "error": "Query must contain only letters and numbers." }`
   - `400` -> `{ "error": "No indexed images. Select a path first." }`
   - `429` -> `{ "error": "A search is already running." }`
+  - `503` -> `{ "error": "AI operations are disabled." }`
 
 ### `GET /api/search/progress/<search_id>` (also `HEAD`, `OPTIONS`)
 Stream search progress via Server-Sent Events (SSE). Yields JSON progress objects every 500ms until the search is complete or fails.
@@ -108,6 +129,8 @@ Stream search progress via Server-Sent Events (SSE). Yields JSON progress object
 - Body: none
 - Returns:
   - `200` -> `text/event-stream` with `data: { ... }` lines
+- Returns (`aiEnabled` is `false`):
+  - `503` -> `{ "error": "AI operations are disabled." }`
 - Progress fields:
   - `status`: `"queued"` | `"running"` | `"complete"` | `"error"`
   - `query`: the search query
