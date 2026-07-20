@@ -1,0 +1,16 @@
+# systemd unit for the service. Update user and paths before installation.
+
+[Unit]
+Description=GalleryCleaner
+After=network.target
+
+[Service]
+Type=simple
+User=yourusername
+WorkingDirectory=/path/to/GalleryCleaner
+ExecStart=/path/to/GalleryCleaner/.venv/bin/python src/main.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
