@@ -1,53 +1,65 @@
 #!/bin/bash
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-cd "$ROOT_DIR"
+# Set up GalleryCleaner on macOS or Linux.
 
-echo "Setting up GalleryCleaner Application..."
-echo
+set -euo pipefail
 
-# Check if Python is installed
-if ! command -v python3 &> /dev/null; then
-    echo "ERROR: Python 3 is not installed or not in PATH"
-    echo "Please install Python 3.7 or higher and ensure it's added to PATH"
-    exit 1
+cd "$(dirname "$0")/.." || exit 1
+
+# Check Python 3.10+.
+if ! command -v python3 &>/dev/null; then
+  echo "ERROR: Python 3 not found."
+  echo "Install Python 3.10+:"
+  echo "  macOS: brew install python3"
+  echo "  Debian/Ubuntu: sudo apt install python3 python3-venv python3-pip"
+  echo "  Fedora: sudo dnf install python3"
+  exit 1
 fi
 
-# Create virtual environment if it doesn't exist
+PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}')
+MAJOR=$(echo "$PYTHON_VERSION" | cut -d. -f1)
+MINOR=$(echo "$PYTHON_VERSION" | cut -d. -f2)
+
+if [ "$MAJOR" -lt 3 ] || { [ "$MAJOR" -eq 3 ] && [ "$MINOR" -lt 10 ]; }; then
+  echo "ERROR: Python 3.10+ required; found $PYTHON_VERSION"
+  exit 1
+fi
+
+echo "Python $PYTHON_VERSION detected."
+
+# Virtual environment.
+if [ -d ".venv" ]; then
+  read -p "Virtual environment exists. Recreate? (y/N): " -n 1 -r
+  echo
+  if [[ $REPLY =~ ^[Yy]$ ]]; then
+    rm -rf .venv
+  fi
+fi
+
 if [ ! -d ".venv" ]; then
-    echo "Creating virtual environment..."
-    python3 -m venv .venv
-    if [ $? -ne 0 ]; then
-        echo "ERROR: Failed to create virtual environment"
-        exit 1
-    fi
-    echo "Virtual environment created successfully."
-else
-    echo "Virtual environment already exists."
+  python3 -m venv .venv || { echo "ERROR: Failed to create virtual environment."; exit 1; }
 fi
 
-# Activate virtual environment
-echo "Activating virtual environment..."
 source .venv/bin/activate
-if [ $? -ne 0 ]; then
-    echo "ERROR: Failed to activate virtual environment"
-    exit 1
+
+# Install dependencies.
+python -m pip install --quiet --upgrade pip
+python -m pip install --quiet -r requirements.txt || { echo "ERROR: Failed to install dependencies."; exit 1; }
+echo "Dependencies installed."
+
+# Check configuration.
+if [ ! -f "configuration.json" ]; then
+  echo "WARNING: Create configuration.json before running GalleryCleaner."
 fi
 
-# Upgrade pip
-echo "Upgrading pip..."
-python -m pip install --upgrade pip
-
-# Install required packages
-echo "Installing required packages..."
-pip install -r requirements.txt
-if [ $? -ne 0 ]; then
-    echo "ERROR: Failed to install required packages"
-    exit 1
+echo ""
+echo "Setup complete."
+echo ""
+echo "Next: chmod +x scripts/run.sh && ./scripts/run.sh"
+echo ""
+echo "For auto-start:"
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  echo "  macOS: Edit deployment/com.service.plist, copy to ~/Library/LaunchAgents/."
+elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+  echo "  Linux: Edit deployment/service.service, copy to /etc/systemd/system/."
 fi
-
-echo
-echo "Setup completed successfully!"
-echo "You can now run the application using ./scripts/run.sh"
-echo

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- launchd plist for the service. Update paths before installation. -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.gallerycleaner</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/path/to/GalleryCleaner/.venv/bin/python</string>
+        <string>/path/to/GalleryCleaner/src/main.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/path/to/GalleryCleaner</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/gallerycleaner.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/tmp/gallerycleaner.error.log</string>
+</dict>
+</plist>

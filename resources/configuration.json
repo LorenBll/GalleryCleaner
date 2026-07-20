@@ -1,0 +1,6 @@
+{
+    "port": 49160,
+    "diskidentifierPort": 49157,
+    "servicehandlerEnabled": true,
+    "servicehandlerPort": 49155
+}

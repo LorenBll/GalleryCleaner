@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>GalleryCleaner</title>
+    <link rel="stylesheet" href="/ui/css/index.css">
+</head>
+<body>
+    <div class="page">
+        <div class="hero">
+            <h1 class="title init-hidden"><a href="https://www.github.com/LorenBll/GalleryCleaner" target="_blank" class="title-link">GalleryCleaner</a></h1>
+            <p class="subtitle init-hidden">Point to a folder of images, review them one by one with keyboard shortcuts, and delete unwanted ones to clean up your gallery.</p>
+        </div>
+
+        <main class="card init-hidden" id="card">
+            <form id="clean-form">
+                <div class="row">
+                    <input id="path-input" type="text" autocomplete="off" spellcheck="false" placeholder="e.g. C:\Users\...\Pictures">
+                    <button id="submit" type="submit" data-label="Confirm Path">
+                        <svg class="submit-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        <div class="submit-spinner"></div>
+                    </button>
+                </div>
+                <div class="checkbox-row">
+                    <label class="checkbox-label" data-label="Index Images in the Subfolders Too">
+                        <input type="checkbox" id="recursive" checked>
+                        <span>Recursive Indexing</span>
+                    </label>
+                </div>
+            </form>
+        </main>
+        <div class="search-area" id="searchArea">
+            <div class="search-bar hidden" id="searchBar">
+                <div class="search-input-row">
+                    <svg class="search-lens" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                    <input type="text" id="searchInput" placeholder="Search files...">
+                </div>
+                <div class="filter-tweak" id="filterTweak">
+                    <span class="filter-tweak-reset" id="filterTweakReset">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                    </span>
+                    <span class="filter-tweak-slider-wrap" data-label="Tweak Accuracy">
+                        <input type="range" class="filter-tweak-slider" id="filterTweakSlider" min="0" max="100" value="30">
+                    </span>
+                    <span class="filter-tweak-btn" id="filterTweakBtn">
+                        <svg class="filter-tweak-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="10" x2="20" y2="3"/><line x1="2" y1="14" x2="6" y2="14"/><line x1="10" y1="12" x2="14" y2="12"/><line x1="18" y1="16" x2="22" y2="16"/></svg>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            var form = document.getElementById('clean-form');
+            var pathInput = document.getElementById('path-input');
+            var submitButton = document.getElementById('submit');
+            var card = document.getElementById('card');
+
+            function animHeight(from, cb, done) {
+                card.style.overflow = 'hidden';
+                card.style.height = from + 'px';
+                void card.offsetHeight;
+                cb();
+                var to = card.scrollHeight + 2;
+                if (Math.abs(to - from) <= 1) {
+                    card.style.height = '';
+                    card.style.overflow = '';
+                    if (done) done();
+                    return;
+                }
+                card.style.transition = 'height 0.3s ease';
+                card.style.height = to + 'px';
+                var onEnd = function() {
+                    card.removeEventListener('transitionend', onEnd);
+                    card.style.height = '';
+                    card.style.overflow = '';
+                    card.style.transition = '';
+                    if (done) done();
+                };
+                card.addEventListener('transitionend', onEnd);
+            }
+
+            function fadeIn(el, slide) {
+                el.style.opacity = '0';
+                if (slide) el.style.transform = 'translateY(-12px)';
+                card.appendChild(el);
+                void el.offsetHeight;
+                var props = 'opacity 0.3s ease' + (slide ? ', transform 0.3s ease' : '');
+                el.style.transition = props;
+                el.style.opacity = '1';
+                if (slide) el.style.transform = 'translateY(0)';
+                el.addEventListener('transitionend', function() {
+                    el.style.transition = '';
+                    if (slide) el.style.transform = '';
+                }, { once: true });
+            }
+
+            function showInlineError(message) {
+                var old = document.getElementById('error-msg');
+                if (old) { old.remove(); }
+
+                var h1 = card.offsetHeight;
+                card.style.overflow = 'hidden';
+                card.style.height = h1 + 'px';
+                void card.offsetHeight;
+
+                var errEl = document.createElement('div');
+                errEl.id = 'error-msg';
+                errEl.className = 'error-msg';
+                errEl.textContent = message;
+                errEl.style.opacity = '0';
+
+                var row = card.querySelector('.row');
+                row.parentNode.insertBefore(errEl, row.nextSibling);
+
+                void card.offsetHeight;
+
+                var h2 = card.scrollHeight + 2;
+                if (Math.abs(h2 - h1) > 1) {
+                    card.style.transition = 'height 0.3s ease';
+                    card.style.height = h2 + 'px';
+                    card.addEventListener('transitionend', function onExpand() {
+                        card.removeEventListener('transitionend', onExpand);
+                        card.style.height = '';
+                        card.style.overflow = '';
+                        card.style.transition = '';
+                    });
+                    setTimeout(function() {
+                        fadeInError(errEl);
+                    }, 150);
+                } else {
+                    card.style.height = '';
+                    card.style.overflow = '';
+                    fadeInError(errEl);
+                }
+
+                function fadeInError(el) {
+                    void el.offsetHeight;
+                    el.style.transition = 'opacity 0.3s ease';
+                    el.style.opacity = '1';
+                    el.addEventListener('transitionend', function onFadeIn() {
+                        el.removeEventListener('transitionend', onFadeIn);
+                        el.style.transition = '';
+                        setTimeout(dismissInlineError, 1500);
+                    });
+                }
+            }
+
+            function slideHeight(target, dur, done) {
+                var start = card.offsetHeight;
+                card.style.overflow = 'hidden';
+                card.style.height = start + 'px';
+                void card.offsetHeight;
+                if (Math.abs(target - start) <= 0.5) {
+                    if (done) done();
+                    return;
+                }
+                var begin = performance.now();
+                function frame(now) {
+                    var t = Math.min((now - begin) / dur, 1);
+                    var ease = 1 - Math.pow(1 - t, 3);
+                    card.style.height = (start + (target - start) * ease) + 'px';
+                    if (t < 1) {
+                        requestAnimationFrame(frame);
+                    } else {
+                        card.style.height = '';
+                        card.style.overflow = '';
+                        if (done) done();
+                    }
+                }
+                requestAnimationFrame(frame);
+            }
+
+            function dismissInlineError() {
+                var errEl = document.getElementById('error-msg');
+                if (!errEl) return;
+                var h = card.offsetHeight;
+                errEl.style.transition = 'opacity 0.3s ease';
+                errEl.style.opacity = '0';
+                setTimeout(function() {
+                    errEl.remove();
+                    void card.offsetHeight;
+                    card.style.height = '';
+                    void card.offsetHeight;
+                    var target = card.offsetHeight;
+                    card.style.height = h + 'px';
+                    void card.offsetHeight;
+                    slideHeight(target, 300);
+                }, 150);
+            }
+
+            function showSuccess() {
+                var body = document.body;
+                if (body.classList.contains('cleaning')) return;
+
+                var title = document.querySelector('.title');
+                var subtitle = document.querySelector('.subtitle');
+                var card = document.getElementById('card');
+
+                body.classList.add('cleaning');
+
+                setTimeout(function() {
+                    var firstRect = title.getBoundingClientRect();
+
+                    subtitle.style.display = 'none';
+                    card.style.display = 'none';
+                    body.classList.add('cleaning-complete');
+
+                    var lastRect = title.getBoundingClientRect();
+
+                    var deltaY = firstRect.top - lastRect.top;
+                    if (Math.abs(deltaY) > 0.5) {
+                        title.style.transform = 'translateY(' + deltaY + 'px)';
+                        void title.offsetHeight;
+                        title.style.transition = 'transform 0.4s ease';
+                        title.style.transform = 'translateY(0)';
+                        title.addEventListener('transitionend', function onEnd() {
+                            title.removeEventListener('transitionend', onEnd);
+                            title.style.transition = '';
+                            title.style.transform = '';
+                        }, { once: true });
+                    }
+
+                    var searchBar = document.getElementById('searchBar');
+                    searchBar.classList.remove('hidden');
+                    searchBar.classList.add('init-hidden');
+                    void searchBar.offsetHeight;
+                    searchBar.classList.remove('init-hidden');
+                    searchBar.classList.add('load-in');
+                    searchBar.addEventListener('animationend', function() {
+                        searchBar.classList.remove('load-in');
+                    }, { once: true });
+                }, 400);
+            }
+
+            function toggleFilterTweak() {
+                var tweak = document.getElementById('filterTweak');
+                tweak.classList.toggle('active');
+                updateResetVisibility();
+            }
+
+            function updateResetVisibility() {
+                var slider = document.getElementById('filterTweakSlider');
+                var reset = document.getElementById('filterTweakReset');
+                if (parseInt(slider.value) !== 30) {
+                    reset.classList.add('show');
+                } else {
+                    reset.classList.remove('show');
+                }
+            }
+
+            pathInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    this.blur();
+                }
+            });
+
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                var value = pathInput.value.trim();
+                if (!value) {
+                    pathInput.focus();
+                    return;
+                }
+
+                submitButton.classList.add('loading');
+                submitButton.disabled = true;
+                pathInput.disabled = true;
+                document.getElementById('recursive').disabled = true;
+
+                try {
+                    var response = await fetch('/api/check/path', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            path: value,
+                            recursive: document.getElementById('recursive').checked
+                        })
+                    });
+
+                    var text = await response.text();
+                    var payload;
+                    try {
+                        payload = JSON.parse(text);
+                    } catch (e) {
+                        payload = { error: text || 'Unexpected response from /api/check/path.' };
+                    }
+
+                    submitButton.classList.remove('loading');
+
+                    if (!response.ok || (payload && payload.error)) {
+                        var msg = payload && payload.error ? payload.error : 'Request failed.';
+                        showInlineError(msg);
+                        submitButton.disabled = false;
+                        pathInput.disabled = false;
+                        document.getElementById('recursive').disabled = false;
+                        return;
+                    }
+
+                    showSuccess();
+                    submitButton.disabled = false;
+                } catch (error) {
+                    submitButton.classList.remove('loading');
+                    showInlineError(String(error));
+                    submitButton.disabled = false;
+                    pathInput.disabled = false;
+                    document.getElementById('recursive').disabled = false;
+                }
+            });
+
+            if (window._DISKIDENTIFIER_ERROR) {
+                var form = document.getElementById('clean-form');
+                form.innerHTML = '<div class="error-state">' + window._DISKIDENTIFIER_ERROR + '</div>';
+            }
+
+            document.getElementById('filterTweakBtn').addEventListener('click', toggleFilterTweak);
+            document.getElementById('filterTweakSlider').addEventListener('input', updateResetVisibility);
+            document.getElementById('filterTweakReset').addEventListener('click', function() {
+                document.getElementById('filterTweakSlider').value = '30';
+                updateResetVisibility();
+            });
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    document.getElementById('searchInput').blur();
+                    var tweak = document.getElementById('filterTweak');
+                    if (tweak.classList.contains('active')) {
+                        tweak.classList.remove('active');
+                        updateResetVisibility();
+                    }
+                }
+            });
+
+            document.addEventListener('click', function(e) {
+                var tweak = document.getElementById('filterTweak');
+                if (!tweak.classList.contains('active')) return;
+                if (tweak.contains(e.target)) return;
+                tweak.classList.remove('active');
+                updateResetVisibility();
+            });
+
+            function triggerLoadIn() {
+                var items = [
+                    { el: document.querySelector('.title'), delay: 0 },
+                    { el: document.querySelector('.subtitle'), delay: 0.15 },
+                    { el: document.getElementById('card'), delay: 0.3 }
+                ];
+                requestAnimationFrame(function() {
+                    items.forEach(function(item) {
+                        if (!item.el) return;
+                        item.el.style.animationDelay = item.delay + 's';
+                        item.el.classList.remove('init-hidden');
+                        item.el.classList.add('load-in');
+                        item.el.addEventListener('animationend', function() {
+                            this.classList.remove('load-in');
+                            this.style.animationDelay = '';
+                        }, { once: true });
+                    });
+                });
+            }
+
+            triggerLoadIn();
+        })();
+    </script>
+</body>
+</html>

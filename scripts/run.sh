@@ -1,40 +1,50 @@
 #!/bin/bash
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-cd "$ROOT_DIR"
+# Start GalleryCleaner.
 
-echo "Starting GalleryCleaner Application..."
-echo
+set -euo pipefail
 
-# Check if virtual environment exists
+VERBOSE=0
+if [ "${1:-}" = "--verbose" ]; then
+  VERBOSE=1
+fi
+
+cd "$(dirname "$0")/.." || exit 1
+
+# Check Python 3.10+.
+if ! command -v python3 &>/dev/null; then
+  [ $VERBOSE -eq 1 ] && echo "ERROR: Python 3 not installed or not on PATH."
+  exit 1
+fi
+
+PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}')
+MAJOR=$(echo "$PYTHON_VERSION" | cut -d. -f1)
+MINOR=$(echo "$PYTHON_VERSION" | cut -d. -f2)
+
+if [ "$MAJOR" -lt 3 ] || { [ "$MAJOR" -eq 3 ] && [ "$MINOR" -lt 10 ]; }; then
+  [ $VERBOSE -eq 1 ] && echo "ERROR: Python 3.10+ required; found $PYTHON_VERSION"
+  exit 1
+fi
+
+[ $VERBOSE -eq 1 ] && echo "Python $PYTHON_VERSION detected."
+
+# Create or reuse virtual environment.
 if [ ! -d ".venv" ]; then
-    echo "ERROR: Virtual environment not found!"
-    echo "Please run ./scripts/setup.sh first to create the virtual environment."
-    exit 1
+  [ $VERBOSE -eq 1 ] && echo "Creating virtual environment..."
+  python3 -m venv .venv
+  [ $VERBOSE -eq 1 ] && echo "Virtual environment created."
 fi
 
-# Activate virtual environment
-echo "Activating virtual environment..."
+# Activate virtual environment.
 source .venv/bin/activate
-if [ $? -ne 0 ]; then
-    echo "ERROR: Failed to activate virtual environment"
-    exit 1
-fi
+[ $VERBOSE -eq 1 ] && echo "Virtual environment activated."
 
-# Check if main.py exists
-if [ ! -f "src/main.py" ]; then
-    echo "ERROR: main.py not found in src directory"
-    exit 1
-fi
+# Install or upgrade dependencies.
+[ $VERBOSE -eq 1 ] && echo "Installing dependencies..."
+python -m pip install --quiet --upgrade pip
+python -m pip install --quiet -r requirements.txt
+[ $VERBOSE -eq 1 ] && echo "Dependencies installed."
 
-# Run the application
+# Start GalleryCleaner.
+[ $VERBOSE -eq 1 ] && echo "" && echo "GalleryCleaner starting..." && echo ""
 python src/main.py
-
-# Check if the application ran successfully
-exit_code=$?
-if [ $exit_code -ne 0 ]; then
-    echo
-    echo "Application exited with an error (code $exit_code)"
-    exit $exit_code
-fi
