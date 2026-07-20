@@ -12,16 +12,17 @@ Only the latest released version receives security updates.
 
 If you believe you have found a security issue in GalleryCleaner, please report it privately to the maintainers rather than opening a public issue.
 
-GalleryCleaner is a local desktop image review application that involves:
+GalleryCleaner is a local image search service that involves:
 - **File system access** — reading user-provided directory paths and recursively scanning for image files
 - **Image processing** — opening, decoding, and transforming images via Pillow from untrusted file content
-- **Trash operations** — moving files to the system trash via send2trash, a privileged filesystem operation
-- **Localhost API communication** — communicating with a DiskIdentifier API on localhost for ultimate path resolution
-- **Persistent file writes** — overwriting image files on disk during rotation operations
+- **CLIP model inference** — running PyTorch and OpenAI's CLIP model for semantic image search
+- **Localhost API communication** — communicating with DiskIdentifier and ServiceHandler services on localhost
+- **JSON index persistence** — reading and writing search indices to `resources/search_index.json`
 
 Include as much detail as possible, such as:
-- A clear description of the issue and the affected component
+- A clear description of the issue and the affected endpoint or component
 - Steps to reproduce the problem (directory paths, image files, application state)
+- Any relevant logs or error messages
 - Your environment details (operating system, Python version, dependency versions)
 - The potential impact and how severe you believe it is
 
@@ -40,12 +41,13 @@ After a report is received:
 
 This project is intended to follow basic security hygiene:
 
-- **Local file access** — GalleryCleaner only accesses directories and files that the user explicitly provides. The application validates directory existence and read/write/execute permissions before scanning. Recursive scanning is opt-in, and `desktop.ini` files are filtered out during directory listing.
+- **GalleryCleaner binds to `127.0.0.1`** by default (port 49160). The before-request hook rejects non-local traffic. Do not change the bind address to `0.0.0.0` without additional network-layer protections.
+- **Local file access** — GalleryCleaner only accesses directories and files that the user explicitly provides. The application validates directory existence before scanning. Recursive scanning is opt-in.
 - **Image file handling** — Supported image formats are restricted to common types. Unreadable or unsupported images fail gracefully without crashing the application. Keep Pillow updated to the latest version, as its format parsers have historically contained vulnerabilities.
-- **Send2Trash safety** — Deletion uses send2trash, which moves files to the operating system's trash rather than permanently deleting them. This provides a recovery safety net. The application does not bypass OS-level trash confirmations.
-- **Localhost API communication** — GalleryCleaner communicates with DiskIdentifier over the loopback interface only. No data is exposed to the network. Verify that no external process binds to the same port.
-- **Configuration file** — Settings are stored in `configuration.json` on the local filesystem and are not transmitted externally.
-- **Dependency review** — Keep dependencies (customtkinter, pillow, send2trash) updated to their latest stable versions. Review changelogs and CVEs before upgrading.
+- **CLIP model execution** — The CLIP model (ViT-B/32) is loaded from the official OpenAI repository and executed locally on either CPU or GPU. No image data or query text is transmitted to external servers.
+- **Localhost API communication** — GalleryCleaner communicates with DiskIdentifier and ServiceHandler over the loopback interface only. No data is exposed to the network.
+- **Configuration file** — Settings are stored in `resources/configuration.json` on the local filesystem and are not transmitted externally.
+- **Dependency review** — Keep dependencies (Flask, torch, torchvision, Pillow, clip) updated to their latest stable versions. Review changelogs and CVEs before upgrading.
 
 ## Disclosure Notes
 

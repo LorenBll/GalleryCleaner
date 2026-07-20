@@ -103,8 +103,8 @@ echo Dependencies installed.
 
 echo.
 echo Checking configuration...
-if not exist "configuration.json" (
-  echo WARNING: Create configuration.json before running GalleryCleaner.
+if not exist "resources\configuration.json" (
+  echo WARNING: Create resources\configuration.json before running GalleryCleaner.
 ) else (
   echo Configuration file found.
 )

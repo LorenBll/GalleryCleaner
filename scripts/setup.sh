@@ -48,8 +48,8 @@ python -m pip install --quiet -r requirements.txt || { echo "ERROR: Failed to in
 echo "Dependencies installed."
 
 # Check configuration.
-if [ ! -f "configuration.json" ]; then
-  echo "WARNING: Create configuration.json before running GalleryCleaner."
+if [ ! -f "resources/configuration.json" ]; then
+  echo "WARNING: Create resources/configuration.json before running GalleryCleaner."
 fi
 
 echo ""
