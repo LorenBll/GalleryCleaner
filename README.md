@@ -40,7 +40,6 @@ GalleryCleaner binds to `127.0.0.1` on port `49160` and rejects API calls that d
 
 | Variable | Description |
 |----------|-------------|
-| `GC_API_KEYS` | JSON object mapping service names to plain API keys. Loaded at session initialization. API keys are stored as plain text in `.env`. (Not yet implemented) |
 | `GC_PORT` | Override the port set in `configuration.json`. |
 
 ## Run
