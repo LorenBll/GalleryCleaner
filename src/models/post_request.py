@@ -4,8 +4,8 @@ from dataclasses import dataclass, field
 
 
 @dataclass(slots=True)
-class PostRequestSpec:
+class PostRequest:
     url: str
-    body: bytes
+    body: bytes = b""
     timeout: float = 30.0
     headers: dict[str, str] = field(default_factory=dict)

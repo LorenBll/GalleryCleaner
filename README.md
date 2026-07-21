@@ -1,46 +1,27 @@
 # GalleryCleaner
 
-GalleryCleaner is a local web service that uses OpenAI's CLIP model for natural language-based image search on local directories.
+GalleryCleaner is a local keyboard-first image review application. It solves the problem of cleaning large image collections quickly by minimizing clicks, dialogs, and navigation friction during image triage.
 
 ## About
 
-GalleryCleaner binds to `127.0.0.1` on port `49160` and rejects API calls that do not come from the local device. It indexes images from user-specified directories and searches them using text queries via CLIP (Contrastive Language-Image Pre-training). Search results are cached in a JSON index to accelerate subsequent queries. Progress streaming is available via Server-Sent Events (SSE).
+GalleryCleaner is scoped to rapid image-folder review and provides a focused desktop workflow for navigating, rotating, refreshing, and trashing images with minimal interaction overhead.
 
 **Features:**
 
-- **Path validation** — check whether a directory contains image files and register it for searching.
-- **CLIP-based semantic search** — search indexed images using natural language text queries (can be disabled in config).
-- **Caching** — search results are persisted to `resources/search_index.json` so repeated queries skip recomputation.
-- **Parallel processing** — images are split into worker batches and processed in platoons for efficient GPU/CPU utilization.
-- **SSE progress streaming** — get real-time updates as a search runs, including filtering, model loading, and worker progress.
-- **DiskIdentifier integration** — resolves drive identities for portable path references across reboots (not required when AI is disabled).
-- **ServiceHandler registration** — auto-registers all API endpoints with ServiceHandler for service discovery.
-
-> **Safety notice**: GalleryCleaner is intended only for environments where safety is not a major risk — the chances of malevolent actors are low, and the consequences of an eventual mishap are low.
+- **Keyboard-First Workflow** — primary navigation and actions are designed around keyboard shortcuts for rapid image review.
+- **Safe File Removal** — images are moved to the system trash using `send2trash` instead of being permanently deleted.
+- **Recursive Directory Review** — optional recursive scanning allows images from nested subdirectories to be reviewed as a single navigation queue.
+- **Persistent or Visual Rotation** — image rotation supports two modes: visual-only rotation that affects preview state, and persistent file-level rotation written directly to disk.
+- **Image Preloading** — nearby images are asynchronously preloaded into memory to improve navigation responsiveness while browsing large collections.
+- **File Metadata Preview** — the viewer displays filename, file type, file size, resolution, creation timestamp, and modification timestamp.
+- **Cross-Platform Desktop Application** — GalleryCleaner works on Windows, macOS, and Linux through a CustomTkinter-based desktop interface.
 
 ## Setup
 
-1. Install Python dependencies: `pip install -r requirements.txt`.
-2. Review `resources/configuration.json` to adjust the port, worker settings, and ServiceHandler integration.
-3. Leave the project structure intact so the service can find `resources/` and `src/`.
-
-### Configuration File (`resources/configuration.json`)
-
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `port` | number | `49160` | TCP port for the service. |
-| `diskidentifierPort` | number | `49157` | Port of the DiskIdentifier service (only used when `aiEnabled` is `true`). |
-| `servicehandlerEnabled` | boolean | `true` | Whether to register with ServiceHandler for service discovery. |
-| `servicehandlerPort` | number | `49155` | Port of the ServiceHandler service. |
-| `aiEnabled` | boolean | `true` | When `false`, AI operations (CLIP search, search index, search UI) are disabled and DiskIdentifier is not required. |
-| `maxWorkerMB` | number | `50` | Maximum megabytes of image data per worker. |
-| `maxWorkersPerPlatoon` | number | `15` | Maximum concurrent workers per platoon. |
-
-### Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `GC_PORT` | Override the port set in `configuration.json`. |
+1. Install the Python dependencies with `pip install -r requirements.txt`.
+2. Ensure the `resources/images/` directory remains in place so application icons can be loaded.
+3. Optionally use the provided setup scripts to create a local virtual environment automatically.
+4. Leave the project structure intact so the application can find `resources/` and `src/`.
 
 ## Run
 
@@ -48,112 +29,71 @@ GalleryCleaner binds to `127.0.0.1` on port `49160` and rejects API calls that d
 2. Unix-like systems: run `bash scripts/run.sh`.
 3. Manual: run `python src/main.py` from the project root.
 
-## Access Control
+## Supported Image Formats
 
-All `/api/*` endpoints are local-device only. Requests from non-local addresses are rejected with:
-- `403` -> `{ "error": "Local device access only." }`
-- All endpoints also support `HEAD` and `OPTIONS`.
-- API responses use `Connection: close`.
+GalleryCleaner currently recognizes the following image extensions:
 
-No API key authentication is currently implemented for GalleryCleaner endpoints. Only localhost access control is enforced.
+- `.jpg`, `.jpeg`, `.png`, `.gif`, `.bmp`, `.tiff`, `.webp`, `.svg`, `.ico`, `.tga`, `.psd`
 
-When `aiEnabled` is `false` in the configuration, all AI-related functionality is disabled:
-- The `/api/search` and `/api/search/progress/<search_id>` endpoints return `503`.
-- The `/api/check/path` endpoint does not require DiskIdentifier and skips image indexing.
-- The search UI is not rendered on the dashboard.
-- DiskIdentifier keepalive threads are not started.
+## Usage
 
-## API Endpoints
+1. Launch the application.
+2. Enter an absolute directory path containing images.
+3. Optionally enable recursive scanning to include subdirectories.
+4. Submit the directory path to begin browsing.
+5. Navigate through images and move unwanted files to trash using keyboard shortcuts or UI controls.
 
-### `GET /api/health` (also `HEAD`, `OPTIONS`)
-Service health check.
-- Auth: local-device only
-- Body: none
-- Returns:
-  - `200` ->
-    ```json
-    {
-      "status": "ok",
-      "service": "GalleryCleaner",
-      "bind_address": "127.0.0.1",
-      "port": 49160,
-      "hostname": "workstation-name",
-      "pid": 12345
-    }
-    ```
+If no supported images are found, the application returns to the directory-selection workflow.
 
-### `POST /api/check/path` (also `HEAD`, `OPTIONS`)
-Validate a directory path for image content, index its files, and load/search the persisted search index for entries under that path.
-- Auth: local-device only
-- Body (JSON object):
-  - `path` (string, required): absolute path to a directory to validate.
-  - `recursive` (boolean, optional, default `true`): whether to scan subdirectories.
-- Returns:
-  - `200` ->
-    ```json
-    {
-      "path": "C:\\Users\\Me\\Pictures",
-      "recursive": true,
-      "indexed": 1500,
-      "status": "confirmed",
-      "ai_enabled": true
-    }
-    ```
-    When `aiEnabled` is `false`, the `indexed` field is `0` and `ai_enabled` is `false`.
-  - `400` -> `{ "error": "Path is required." }`
-  - `400` -> `{ "error": "The specified path does not exist or is not accessible." }`
-  - `400` -> `{ "error": "The selected directory does not contain any image files." }`
-  - `404` -> `{ "error": "The specified path does not exist or is not accessible." }`
-  - `503` -> `{ "error": "DiskIdentifier is required but not available." }` (only returned when `aiEnabled` is `true`)
+## Keyboard Shortcuts
 
-### `POST /api/search` (also `HEAD`, `OPTIONS`)
-Start a CLIP-based semantic image search. Returns a `search_id` that can be polled via the progress endpoint.
-- Auth: local-device only
-- Body (JSON object):
-  - `query` (string, required): alphanumeric text query for the CLIP model.
-- Returns:
-  - `200` -> `{ "search_id": "<uuid>" }`
-  - `400` -> `{ "error": "Invalid JSON body." }`
-  - `400` -> `{ "error": "Query text is required." }`
-  - `400` -> `{ "error": "Query must contain only letters and numbers." }`
-  - `400` -> `{ "error": "No indexed images. Select a path first." }`
-  - `429` -> `{ "error": "A search is already running." }`
-  - `503` -> `{ "error": "AI operations are disabled." }`
+| Key | Action |
+|---|---|
+| `A` / `Left Arrow` | Previous image |
+| `D` / `Right Arrow` | Next image |
+| `S` / `Down Arrow` | Move current image to trash |
+| `Ctrl+Q` | Rotate image counter-clockwise |
+| `Ctrl+E` | Rotate image clockwise |
+| `Ctrl+R` | Refresh current directory |
+| `Esc` | Return to directory selection |
+| `Enter` | Submit directory path |
 
-### `GET /api/search/progress/<search_id>` (also `HEAD`, `OPTIONS`)
-Stream search progress via Server-Sent Events (SSE). Yields JSON progress objects every 500ms until the search is complete or fails.
-- Auth: local-device only
-- Path parameters:
-  - `search_id` (string, required): UUID returned from `/api/search`.
-- Body: none
-- Returns:
-  - `200` -> `text/event-stream` with `data: { ... }` lines
-- Returns (`aiEnabled` is `false`):
-  - `503` -> `{ "error": "AI operations are disabled." }`
-### `POST /api/search/cancel/<search_id>` (also `HEAD`, `OPTIONS`)
-Cancel a running search by its search ID. The search thread will stop at the next checkpoint and return interim results.
-- Auth: local-device only
-- Path parameters:
-  - `search_id` (string, required): UUID returned from `/api/search`.
-- Body: none
-- Returns:
-  - `200` -> `{ "status": "cancelling" }`
-  - `404` -> `{ "error": "Search not found." }`
-  - `503` -> `{ "error": "AI operations are disabled." }`
+## Project Structure
 
-- Progress fields:
-  - `status`: `"queued"` | `"running"` | `"complete"` | `"error"` | `"cancelled"`
-  - `query`: the search query
-  - `phase`: current processing phase (`"filtering"`, `"filtered"`, `"loading_model"`, `"assigning_workers"`, `"workers_assigned"`, `"processing"`, `"platoon_X_of_Y"`, `"persisting"`, `"done"`)
-  - `total_images`: total images in the index
-  - `filtered_out`: images with cached results for this query
-  - `to_process`: images requiring CLIP inference
-  - `processed`: images processed so far
-  - `workers` / `total_workers`: current and total worker count
-  - `platoons` / `current_platoon` / `total_platoons`: platoon progress
-  - `results`: final result object when `status` is `"complete"`
+```text
+GalleryCleaner/
+├── src/
+│   └── main.py
+├── scripts/
+│   ├── setup.bat
+│   ├── setup.sh
+│   ├── run.bat
+│   └── run.sh
+├── resources/
+│   └── images/
+├── docs/
+│   └── images/
+├── requirements.txt
+├── LICENSE
+└── README.md
+```
 
----
+## Error Handling
+
+GalleryCleaner validates:
+
+- directory existence,
+- directory permissions,
+- readable image availability.
+
+Unreadable or unsupported images fail gracefully during loading without terminating the application.
+
+## Tech Stack
+
+- **Language:** Python
+- **UI Framework:** CustomTkinter
+- **Image Processing:** Pillow
+- **File Removal:** Send2Trash
 
 ## Support
 - Open an issue on [GitHub](https://github.com/LorenBll/GalleryCleaner/issues) for bug reports, feature requests, or help.
