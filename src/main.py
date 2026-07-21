@@ -50,6 +50,7 @@ _SEARCH_PROGRESS: dict[str, dict] = {}
 _SEARCH_PROGRESS_LOCK = threading.Lock()
 _SEARCH_IN_PROGRESS = False
 _SEARCH_CANCELLED: set[str] = set()
+_SEARCH_RESULTS: dict[str, list[dict]] = {}
 
 # CLIP model (lazy loaded via openai/clip)
 _clip_model = None
@@ -809,6 +810,7 @@ def _run_search(search_id: str, query: str) -> None:
 
         if not images_to_process:
             cached_results.sort(key=lambda r: r["score"], reverse=True)
+            _SEARCH_RESULTS[search_id] = cached_results
             with _SEARCH_PROGRESS_LOCK:
                 if search_id in _SEARCH_PROGRESS:
                     _SEARCH_PROGRESS[search_id].update(
@@ -897,24 +899,25 @@ def _run_search(search_id: str, query: str) -> None:
 
         logger.info(f"Assigned {len(images_to_process)} images to {total_workers} workers")
 
-        if not workers:
-            cached_results.sort(key=lambda r: r["score"], reverse=True)
-            with _SEARCH_PROGRESS_LOCK:
-                if search_id in _SEARCH_PROGRESS:
-                    _SEARCH_PROGRESS[search_id].update(
-                        status="complete",
-                        phase="done",
-                        results={
-                            "query": query,
-                            "results": cached_results[:50],
-                            "total": len(cached_results),
-                            "filtered_out": filtered_out,
-                            "workers": 0,
-                            "platoons": 0,
-                        },
-                    )
-            _SEARCH_IN_PROGRESS = False
-            return
+            if not workers:
+                cached_results.sort(key=lambda r: r["score"], reverse=True)
+                _SEARCH_RESULTS[search_id] = cached_results
+                with _SEARCH_PROGRESS_LOCK:
+                    if search_id in _SEARCH_PROGRESS:
+                        _SEARCH_PROGRESS[search_id].update(
+                            status="complete",
+                            phase="done",
+                            results={
+                                "query": query,
+                                "results": cached_results[:50],
+                                "total": len(cached_results),
+                                "filtered_out": filtered_out,
+                                "workers": 0,
+                                "platoons": 0,
+                            },
+                        )
+                _SEARCH_IN_PROGRESS = False
+                return
 
         # ---------------------------------------------------------------
         # 4. Worker function
@@ -1044,6 +1047,7 @@ def _run_search(search_id: str, query: str) -> None:
                         phase="done",
                         results=final_results,
                     )
+            _SEARCH_RESULTS[search_id] = all_results
             logger.info(f"Search '{query}' cancelled with {len(all_results)} interim results")
         else:
             with _SEARCH_PROGRESS_LOCK:
@@ -1053,6 +1057,7 @@ def _run_search(search_id: str, query: str) -> None:
                         phase="done",
                         results=final_results,
                     )
+            _SEARCH_RESULTS[search_id] = all_results
             logger.info(f"Search '{query}' complete: {len(all_results)} results")
     except Exception as exc:
         logger.error(f"Search '{query}' failed: {exc}")
@@ -1096,6 +1101,34 @@ def search_cancel(search_id: str) -> tuple:
         _SEARCH_CANCELLED.add(search_id)
     logger.info(f"Search '{search_id[:8]}...' cancellation requested")
     return _success_response({"status": "cancelling"})
+
+
+@app.route("/api/image/<search_id>/<int:index>", methods=["GET"])
+def serve_search_image(search_id: str, index: int) -> Response:
+    results = _SEARCH_RESULTS.get(search_id)
+    if results is None:
+        return _error_response("Search not found.", 404)
+    if index < 0 or index >= len(results):
+        return _error_response("Index out of range.", 404)
+    path = results[index].get("path")
+    if not path or not isinstance(path, str):
+        return _error_response("Path not found.", 404)
+    if not os.path.isfile(path):
+        return _error_response("File not found.", 404)
+    ext = os.path.splitext(path)[1].lower()
+    mime = {
+        ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+        ".png": "image/png", ".gif": "image/gif",
+        ".bmp": "image/bmp", ".webp": "image/webp",
+        ".tiff": "image/tiff", ".tif": "image/tiff",
+    }.get(ext, "application/octet-stream")
+    try:
+        with open(path, "rb") as f:
+            data = f.read()
+        return Response(data, mimetype=mime)
+    except Exception as exc:
+        logger.error(f"Failed to serve image {path}: {exc}")
+        return _error_response("Failed to read file.", 500)
 
 
 # ============================================================================
