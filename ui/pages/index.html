@@ -9,11 +9,11 @@
 <body>
     <div class="page">
         <div class="hero">
-            <h1 class="title init-hidden"><a href="https://www.github.com/LorenBll/GalleryCleaner" target="_blank" class="title-link">GalleryCleaner</a></h1>
-            <p class="subtitle init-hidden">Point to a folder of images, review them one by one with keyboard shortcuts, and delete unwanted ones to clean up your gallery.</p>
+            <h1 class="title"><a href="https://www.github.com/LorenBll/GalleryCleaner" target="_blank" class="title-link">GalleryCleaner</a></h1>
+            <p class="subtitle">Point to a folder of images, review them one by one with keyboard shortcuts, and delete unwanted ones to clean up your gallery.</p>
         </div>
 
-        <main class="card init-hidden" id="card">
+        <main class="card" id="card">
             <form id="clean-form">
                 <div class="row">
                     <input id="path-input" type="text" autocomplete="off" spellcheck="false" placeholder="e.g. C:\Users\...\Pictures">
@@ -616,27 +616,7 @@
 
             document.getElementById('searchGo').addEventListener('click', performSearch);
 
-            function triggerLoadIn() {
-                var items = [
-                    { el: document.querySelector('.title'), delay: 0 },
-                    { el: document.querySelector('.subtitle'), delay: 0.15 },
-                    { el: document.getElementById('card'), delay: 0.3 }
-                ];
-                requestAnimationFrame(function() {
-                    items.forEach(function(item) {
-                        if (!item.el) return;
-                        item.el.style.animationDelay = item.delay + 's';
-                        item.el.classList.remove('init-hidden');
-                        item.el.classList.add('load-in');
-                        item.el.addEventListener('animationend', function() {
-                            this.classList.remove('load-in');
-                            this.style.animationDelay = '';
-                        }, { once: true });
-                    });
-                });
-            }
 
-            triggerLoadIn();
         })();
     </script>
 </body>
