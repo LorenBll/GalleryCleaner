@@ -81,25 +81,22 @@
     </div>
 
     <script>
-        (function() {
-            'use strict';
+        const form = document.getElementById('clean-form');
+        const pathInput = document.getElementById('path-input');
+        const submitButton = document.getElementById('submit');
+        const card = document.getElementById('card');
 
-            var form = document.getElementById('clean-form');
-            var pathInput = document.getElementById('path-input');
-            var submitButton = document.getElementById('submit');
-            var card = document.getElementById('card');
+        // --- Gallery state ---
+        var _galleryResults = null;
+        var _galleryIndex = 0;
+        var _gallerySearchId = null;
+        var _imageCache = {};
 
-            // --- Gallery state ---
-            var _galleryResults = null;
-            var _galleryIndex = 0;
-            var _gallerySearchId = null;
-            var _imageCache = {};
-
-            var gallery = document.getElementById('gallery');
-            var galleryImg = document.getElementById('galleryImage');
-            var galleryPrev = document.getElementById('galleryPrev');
-            var galleryNext = document.getElementById('galleryNext');
-            var galleryCounter = document.getElementById('galleryCounter');
+        const gallery = document.getElementById('gallery');
+        const galleryImg = document.getElementById('galleryImage');
+        const galleryPrev = document.getElementById('galleryPrev');
+        const galleryNext = document.getElementById('galleryNext');
+        const galleryCounter = document.getElementById('galleryCounter');
 
             function _prefetchRange(searchId, center, total) {
                 var keep = {};
@@ -377,8 +374,7 @@
             }
 
             if (window._DISKIDENTIFIER_ERROR) {
-                var form = document.getElementById('clean-form');
-                form.innerHTML = '<div class="error-state">' + window._DISKIDENTIFIER_ERROR + '</div>';
+                document.getElementById('clean-form').innerHTML = '<div class="error-state">' + window._DISKIDENTIFIER_ERROR + '</div>';
             }
 
             document.getElementById('filterTweakBtn').addEventListener('click', toggleFilterTweak);
@@ -561,7 +557,6 @@
             document.getElementById('searchGo').addEventListener('click', performSearch);
 
 
-        })();
     </script>
 </body>
 </html>
