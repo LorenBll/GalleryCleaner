@@ -131,8 +131,19 @@ Stream search progress via Server-Sent Events (SSE). Yields JSON progress object
   - `200` -> `text/event-stream` with `data: { ... }` lines
 - Returns (`aiEnabled` is `false`):
   - `503` -> `{ "error": "AI operations are disabled." }`
+### `POST /api/search/cancel/<search_id>` (also `HEAD`, `OPTIONS`)
+Cancel a running search by its search ID. The search thread will stop at the next checkpoint and return interim results.
+- Auth: local-device only
+- Path parameters:
+  - `search_id` (string, required): UUID returned from `/api/search`.
+- Body: none
+- Returns:
+  - `200` -> `{ "status": "cancelling" }`
+  - `404` -> `{ "error": "Search not found." }`
+  - `503` -> `{ "error": "AI operations are disabled." }`
+
 - Progress fields:
-  - `status`: `"queued"` | `"running"` | `"complete"` | `"error"`
+  - `status`: `"queued"` | `"running"` | `"complete"` | `"error"` | `"cancelled"`
   - `query`: the search query
   - `phase`: current processing phase (`"filtering"`, `"filtered"`, `"loading_model"`, `"assigning_workers"`, `"workers_assigned"`, `"processing"`, `"platoon_X_of_Y"`, `"persisting"`, `"done"`)
   - `total_images`: total images in the index
