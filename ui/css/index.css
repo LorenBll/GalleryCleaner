@@ -101,6 +101,12 @@ input[type="text"]:focus {
     border-color: #9ca3af;
 }
 
+#path-input.input-error {
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.8);
+    background: #fef2f2;
+    border-color: #dc2626;
+}
+
 input[type="text"]::placeholder {
     color: #9ca3af;
 }
