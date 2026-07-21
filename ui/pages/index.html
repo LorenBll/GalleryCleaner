@@ -366,6 +366,15 @@
                 }
             }
 
+            function flashInputError() {
+                pathInput.classList.remove('input-error');
+                void pathInput.offsetWidth;
+                pathInput.classList.add('input-error');
+                setTimeout(function() {
+                    pathInput.classList.remove('input-error');
+                }, 1250);
+            }
+
             pathInput.addEventListener('keydown', function(e) {
                 if (e.key === 'Escape') {
                     this.blur();
@@ -376,6 +385,7 @@
                 e.preventDefault();
                 var value = pathInput.value.trim();
                 if (!value) {
+                    flashInputError();
                     pathInput.focus();
                     return;
                 }
