@@ -344,8 +344,18 @@
                 updateResetVisibility();
             });
 
+            var _currentSearchId = null;
+            var _currentSource = null;
+
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'Escape') {
+                    if (_currentSearchId) {
+                        fetch('/api/search/cancel/' + _currentSearchId, { method: 'POST' });
+                        if (_currentSource) { _currentSource.close(); _currentSource = null; }
+                        document.getElementById('searchOverlay').classList.add('hidden');
+                        _currentSearchId = null;
+                        return;
+                    }
                     document.getElementById('searchInput').blur();
                     var tweak = document.getElementById('filterTweak');
                     if (tweak.classList.contains('active')) {
@@ -372,12 +382,13 @@
                 var fill = document.getElementById('progressFill');
                 var info = document.getElementById('progressInfo');
                 var detail = document.getElementById('progressDetail');
-                var source = null;
 
                 overlay.classList.remove('hidden');
                 fill.style.width = '0%';
                 info.textContent = 'Starting...';
                 detail.textContent = '';
+                info.style.color = '';
+                detail.style.color = '';
 
                 fetch('/api/search', {
                     method: 'POST',
@@ -391,9 +402,9 @@
                         setTimeout(function() { overlay.classList.add('hidden'); }, 2000);
                         return;
                     }
-                    var searchId = data.search_id;
-                    source = new EventSource('/api/search/progress/' + searchId);
-                    source.onmessage = function(event) {
+                    _currentSearchId = data.search_id;
+                    _currentSource = new EventSource('/api/search/progress/' + _currentSearchId);
+                    _currentSource.onmessage = function(event) {
                         var p = JSON.parse(event.data);
                         if (!p || !p.status) return;
 
@@ -419,30 +430,42 @@
                                     info.textContent = 'Saving results...';
                                 }
                                 break;
+                            case 'cancelled':
+                                info.textContent = 'Cancelled - ' + p.results.total + ' results';
+                                info.style.color = '#d97706';
+                                detail.textContent = '';
+                                if (_currentSource) { _currentSource.close(); _currentSource = null; }
+                                _currentSearchId = null;
+                                setTimeout(function() { overlay.classList.add('hidden'); }, 2000);
+                                break;
                             case 'complete':
                                 fill.style.width = '100%';
                                 info.textContent = 'Complete - ' + p.results.total + ' results';
                                 detail.textContent = p.results.workers + ' workers in ' + p.results.platoons + ' platoons';
-                                if (source) { source.close(); }
+                                if (_currentSource) { _currentSource.close(); _currentSource = null; }
+                                _currentSearchId = null;
                                 setTimeout(function() { overlay.classList.add('hidden'); }, 2000);
                                 break;
                             case 'error':
                                 info.textContent = 'Error: ' + (p.error || 'Unknown');
                                 detail.textContent = '';
-                                if (source) { source.close(); }
+                                if (_currentSource) { _currentSource.close(); _currentSource = null; }
+                                _currentSearchId = null;
                                 setTimeout(function() { overlay.classList.add('hidden'); }, 3000);
                                 break;
                         }
                     };
-                    source.onerror = function() {
+                    _currentSource.onerror = function() {
                         info.textContent = 'Connection lost';
-                        if (source) { source.close(); }
+                        if (_currentSource) { _currentSource.close(); _currentSource = null; }
+                        _currentSearchId = null;
                         setTimeout(function() { overlay.classList.add('hidden'); }, 2000);
                     };
                 })
                 .catch(function(err) {
                     info.textContent = 'Search request failed';
                     detail.textContent = String(err);
+                    _currentSearchId = null;
                     setTimeout(function() { overlay.classList.add('hidden'); }, 2000);
                 });
             }

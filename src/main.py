@@ -49,6 +49,7 @@ _INDEXED_IMAGES: dict[str, str] = {}  # ultimate_path -> raw_path
 _SEARCH_PROGRESS: dict[str, dict] = {}
 _SEARCH_PROGRESS_LOCK = threading.Lock()
 _SEARCH_IN_PROGRESS = False
+_SEARCH_CANCELLED: set[str] = set()
 
 # CLIP model (lazy loaded via openai/clip)
 _clip_model = None
@@ -963,6 +964,9 @@ def _run_search(search_id: str, query: str) -> None:
 
         new_results: list[dict] = []
         for platoon_idx, platoon in enumerate(platoons, start=1):
+            if search_id in _SEARCH_CANCELLED:
+                logger.info(f"Search '{query}' cancelled before platoon {platoon_idx}")
+                break
             _update_progress(
                 search_id,
                 current_platoon=platoon_idx,
@@ -999,22 +1003,23 @@ def _run_search(search_id: str, query: str) -> None:
         # ---------------------------------------------------------------
         # 6. Persist new results
         # ---------------------------------------------------------------
-        _update_progress(search_id, phase="persisting")
-        raw_to_ultimate = {raw: ult for ult, raw in _INDEXED_IMAGES.items()}
-        logger.info(f"Persisting {len(new_results)} new results for query '{query}'")
-        with _SEARCH_INDEX_LOCK:
-            for r in new_results:
-                raw_path = r["path"]
-                ultimate_path = raw_to_ultimate.get(raw_path, raw_path)
-                if ultimate_path not in _SEARCH_INDEX:
-                    _SEARCH_INDEX[ultimate_path] = []
-                _SEARCH_INDEX[ultimate_path].append({query: r["score"]})
-                _SEARCH_INDEX_REVERSE.setdefault(query, {})[r["score"]] = ultimate_path
-            fwd_count = len(_SEARCH_INDEX)
-            rev_count = len(_SEARCH_INDEX_REVERSE)
+        if search_id not in _SEARCH_CANCELLED:
+            _update_progress(search_id, phase="persisting")
+            raw_to_ultimate = {raw: ult for ult, raw in _INDEXED_IMAGES.items()}
+            logger.info(f"Persisting {len(new_results)} new results for query '{query}'")
+            with _SEARCH_INDEX_LOCK:
+                for r in new_results:
+                    raw_path = r["path"]
+                    ultimate_path = raw_to_ultimate.get(raw_path, raw_path)
+                    if ultimate_path not in _SEARCH_INDEX:
+                        _SEARCH_INDEX[ultimate_path] = []
+                    _SEARCH_INDEX[ultimate_path].append({query: r["score"]})
+                    _SEARCH_INDEX_REVERSE.setdefault(query, {})[r["score"]] = ultimate_path
+                fwd_count = len(_SEARCH_INDEX)
+                rev_count = len(_SEARCH_INDEX_REVERSE)
 
-        logger.info(f"Indices updated: forward={fwd_count} paths, reverse={rev_count} queries")
-        _save_search_index()
+            logger.info(f"Indices updated: forward={fwd_count} paths, reverse={rev_count} queries")
+            _save_search_index()
 
         # ---------------------------------------------------------------
         # 7. Combine and return
@@ -1031,15 +1036,24 @@ def _run_search(search_id: str, query: str) -> None:
             "platoons": total_platoons,
         }
 
-        with _SEARCH_PROGRESS_LOCK:
-            if search_id in _SEARCH_PROGRESS:
-                _SEARCH_PROGRESS[search_id].update(
-                    status="complete",
-                    phase="done",
-                    results=final_results,
-                )
-
-        logger.info(f"Search '{query}' complete: {len(all_results)} results")
+        if search_id in _SEARCH_CANCELLED:
+            with _SEARCH_PROGRESS_LOCK:
+                if search_id in _SEARCH_PROGRESS:
+                    _SEARCH_PROGRESS[search_id].update(
+                        status="cancelled",
+                        phase="done",
+                        results=final_results,
+                    )
+            logger.info(f"Search '{query}' cancelled with {len(all_results)} interim results")
+        else:
+            with _SEARCH_PROGRESS_LOCK:
+                if search_id in _SEARCH_PROGRESS:
+                    _SEARCH_PROGRESS[search_id].update(
+                        status="complete",
+                        phase="done",
+                        results=final_results,
+                    )
+            logger.info(f"Search '{query}' complete: {len(all_results)} results")
     except Exception as exc:
         logger.error(f"Search '{query}' failed: {exc}")
         with _SEARCH_PROGRESS_LOCK:
@@ -1048,6 +1062,7 @@ def _run_search(search_id: str, query: str) -> None:
                     status="error", error=str(exc)
                 )
     finally:
+        _SEARCH_CANCELLED.discard(search_id)
         _SEARCH_IN_PROGRESS = False
 
 
@@ -1062,11 +1077,25 @@ def search_progress(search_id: str) -> Response:
                 progress = _SEARCH_PROGRESS.get(search_id, {})
             yield f"data: {json.dumps(progress, ensure_ascii=False)}\n\n"
             status = progress.get("status")
-            if status in ("complete", "error") or not progress:
+            if status in ("complete", "error", "cancelled") or not progress:
                 break
             time.sleep(0.5)
 
     return Response(generate(), mimetype="text/event-stream")
+
+
+@app.route("/api/search/cancel/<search_id>", methods=["POST", "OPTIONS"])
+def search_cancel(search_id: str) -> tuple:
+    if request.method == "OPTIONS":
+        return _options_response(["POST", "OPTIONS"])
+    if not _AI_ENABLED:
+        return _error_response("AI operations are disabled.", 503)
+    with _SEARCH_PROGRESS_LOCK:
+        if search_id not in _SEARCH_PROGRESS:
+            return _error_response("Search not found.", 404)
+        _SEARCH_CANCELLED.add(search_id)
+    logger.info(f"Search '{search_id[:8]}...' cancellation requested")
+    return _success_response({"status": "cancelling"})
 
 
 # ============================================================================
