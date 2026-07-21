@@ -14,7 +14,6 @@ import uuid
 import urllib.request
 from pathlib import Path
 
-import torch
 from flask import Flask, Response, jsonify, render_template_string, request, send_from_directory
 
 from models import GetRequest, GetResponse, PostRequestSpec, PostResponse
@@ -329,6 +328,7 @@ def _lazy_load_clip():
     global _clip_model, _clip_preprocess, _clip_device
     if _clip_model is not None:
         return
+    import torch
     import clip
     _clip_device = "cuda" if torch.cuda.is_available() else "cpu"
     _clip_model, _clip_preprocess = clip.load("ViT-B/32", device=_clip_device)
@@ -845,6 +845,7 @@ def _run_search(search_id: str, query: str) -> None:
             return
 
         logger.info("CLIP model loaded, computing text features...")
+        import torch
         import clip
         text_tokens = clip.tokenize([query]).to(_clip_device)
         with torch.no_grad():
@@ -899,7 +900,7 @@ def _run_search(search_id: str, query: str) -> None:
 
         logger.info(f"Assigned {len(images_to_process)} images to {total_workers} workers")
 
-            if not workers:
+        if not workers:
                 cached_results.sort(key=lambda r: r["score"], reverse=True)
                 _SEARCH_RESULTS[search_id] = cached_results
                 with _SEARCH_PROGRESS_LOCK:
