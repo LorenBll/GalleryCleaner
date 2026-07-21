@@ -213,97 +213,31 @@
             }
 
             function showInlineError(message) {
-                var old = document.getElementById('error-msg');
-                if (old) { old.remove(); }
+                var existing = document.getElementById('error-msg');
+                if (existing) { existing.remove(); }
 
-                var h1 = card.offsetHeight;
-                card.style.overflow = 'hidden';
-                card.style.height = h1 + 'px';
-                void card.offsetHeight;
+                var el = document.createElement('div');
+                el.id = 'error-msg';
+                el.className = 'error-msg';
+                el.textContent = message;
+                card.appendChild(el);
+                el.style.opacity = '0';
 
-                var errEl = document.createElement('div');
-                errEl.id = 'error-msg';
-                errEl.className = 'error-msg';
-                errEl.textContent = message;
-                errEl.style.opacity = '0';
-
-                var row = card.querySelector('.row');
-                row.parentNode.insertBefore(errEl, row.nextSibling);
-
-                void card.offsetHeight;
-
-                var h2 = card.scrollHeight + 2;
-                if (Math.abs(h2 - h1) > 1) {
-                    card.style.transition = 'height 0.3s ease';
-                    card.style.height = h2 + 'px';
-                    card.addEventListener('transitionend', function onExpand() {
-                        card.removeEventListener('transitionend', onExpand);
-                        card.style.height = '';
-                        card.style.overflow = '';
-                        card.style.transition = '';
-                    });
+                void el.offsetHeight;
+                el.style.transition = 'opacity 0.3s ease';
+                el.style.opacity = '1';
+                el.addEventListener('transitionend', function onFade() {
+                    el.removeEventListener('transitionend', onFade);
+                    el.style.transition = '';
                     setTimeout(function() {
-                        fadeInError(errEl);
-                    }, 150);
-                } else {
-                    card.style.height = '';
-                    card.style.overflow = '';
-                    fadeInError(errEl);
-                }
-
-                function fadeInError(el) {
-                    void el.offsetHeight;
-                    el.style.transition = 'opacity 0.3s ease';
-                    el.style.opacity = '1';
-                    el.addEventListener('transitionend', function onFadeIn() {
-                        el.removeEventListener('transitionend', onFadeIn);
-                        el.style.transition = '';
-                        setTimeout(dismissInlineError, 1500);
-                    });
-                }
-            }
-
-            function slideHeight(target, dur, done) {
-                var start = card.offsetHeight;
-                card.style.overflow = 'hidden';
-                card.style.height = start + 'px';
-                void card.offsetHeight;
-                if (Math.abs(target - start) <= 0.5) {
-                    if (done) done();
-                    return;
-                }
-                var begin = performance.now();
-                function frame(now) {
-                    var t = Math.min((now - begin) / dur, 1);
-                    var ease = 1 - Math.pow(1 - t, 3);
-                    card.style.height = (start + (target - start) * ease) + 'px';
-                    if (t < 1) {
-                        requestAnimationFrame(frame);
-                    } else {
-                        card.style.height = '';
-                        card.style.overflow = '';
-                        if (done) done();
-                    }
-                }
-                requestAnimationFrame(frame);
-            }
-
-            function dismissInlineError() {
-                var errEl = document.getElementById('error-msg');
-                if (!errEl) return;
-                var h = card.offsetHeight;
-                errEl.style.transition = 'opacity 0.3s ease';
-                errEl.style.opacity = '0';
-                setTimeout(function() {
-                    errEl.remove();
-                    void card.offsetHeight;
-                    card.style.height = '';
-                    void card.offsetHeight;
-                    var target = card.offsetHeight;
-                    card.style.height = h + 'px';
-                    void card.offsetHeight;
-                    slideHeight(target, 300);
-                }, 150);
+                        el.style.transition = 'opacity 0.3s ease';
+                        el.style.opacity = '0';
+                        el.addEventListener('transitionend', function onOut() {
+                            el.removeEventListener('transitionend', onOut);
+                            el.remove();
+                        }, { once: true });
+                    }, 1500);
+                }, { once: true });
             }
 
             function showSuccess() {
