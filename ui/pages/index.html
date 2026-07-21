@@ -30,6 +30,22 @@
                 </div>
             </form>
         </main>
+
+        <div class="gallery hidden" id="gallery">
+            <div class="gallery-viewport">
+                <button class="gallery-nav gallery-prev hidden" id="galleryPrev" data-label="Previous (A)">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <div class="gallery-image-wrap" id="galleryImageWrap">
+                    <img class="gallery-image" id="galleryImage" alt="" src="">
+                </div>
+                <button class="gallery-nav gallery-next hidden" id="galleryNext" data-label="Next (D)">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+            </div>
+            <div class="gallery-counter" id="galleryCounter"></div>
+        </div>
+
         <div class="search-area" id="searchArea">
             <div class="search-bar hidden" id="searchBar">
                 <div class="search-input-row">
@@ -72,6 +88,90 @@
             var pathInput = document.getElementById('path-input');
             var submitButton = document.getElementById('submit');
             var card = document.getElementById('card');
+
+            // --- Gallery state ---
+            var _galleryResults = null;
+            var _galleryIndex = 0;
+            var _gallerySearchId = null;
+            var _imageCache = {};
+
+            var gallery = document.getElementById('gallery');
+            var galleryImg = document.getElementById('galleryImage');
+            var galleryPrev = document.getElementById('galleryPrev');
+            var galleryNext = document.getElementById('galleryNext');
+            var galleryCounter = document.getElementById('galleryCounter');
+
+            function _prefetchRange(searchId, center, total) {
+                var keep = {};
+                for (var i = Math.max(0, center - 5); i < Math.min(total, center + 6); i++) {
+                    keep[i] = true;
+                    if (!_imageCache[searchId + ':' + i]) {
+                        var img = new Image();
+                        img.src = '/api/image/' + searchId + '/' + i;
+                        _imageCache[searchId + ':' + i] = img;
+                    }
+                }
+                for (var key in _imageCache) {
+                    if (key.indexOf(searchId + ':') === 0) {
+                        var idx = parseInt(key.split(':')[1], 10);
+                        if (!keep[idx]) {
+                            delete _imageCache[key];
+                        }
+                    }
+                }
+            }
+
+            function _updateGalleryNav() {
+                if (_galleryResults) {
+                    var total = _galleryResults.length;
+                    if (total === 0) { return; }
+                    if (_galleryIndex > 0) {
+                        galleryPrev.classList.remove('hidden');
+                        galleryPrev.classList.add('gallery-nav-visible');
+                    } else {
+                        galleryPrev.classList.remove('gallery-nav-visible');
+                        galleryPrev.classList.add('hidden');
+                    }
+                    if (_galleryIndex < total - 1) {
+                        galleryNext.classList.remove('hidden');
+                        galleryNext.classList.add('gallery-nav-visible');
+                    } else {
+                        galleryNext.classList.remove('gallery-nav-visible');
+                        galleryNext.classList.add('hidden');
+                    }
+                }
+            }
+
+            function _goToImage(index) {
+                if (!_galleryResults || index < 0 || index >= _galleryResults.length) return;
+                _galleryIndex = index;
+                galleryImg.classList.remove('gallery-image-loaded');
+                galleryImg.src = '/api/image/' + _gallerySearchId + '/' + index;
+                galleryImg.onload = function() {
+                    galleryImg.classList.add('gallery-image-loaded');
+                };
+                galleryImg.onerror = function() {
+                    galleryImg.classList.add('gallery-image-loaded');
+                };
+                galleryCounter.textContent = (index + 1) + ' / ' + _galleryResults.length;
+                _updateGalleryNav();
+                _prefetchRange(_gallerySearchId, index, _galleryResults.length);
+            }
+
+            function _goPrev() {
+                if (_galleryResults && _galleryIndex > 0) {
+                    _goToImage(_galleryIndex - 1);
+                }
+            }
+
+            function _goNext() {
+                if (_galleryResults && _galleryIndex < _galleryResults.length - 1) {
+                    _goToImage(_galleryIndex + 1);
+                }
+            }
+
+            galleryPrev.addEventListener('click', _goPrev);
+            galleryNext.addEventListener('click', _goNext);
 
             function animHeight(from, cb, done) {
                 card.style.overflow = 'hidden';
@@ -355,12 +455,34 @@
                         document.getElementById('searchOverlay').classList.add('hidden');
                         _currentSearchId = null;
                         return;
+                    if (_galleryResults) {
+                        _galleryResults = null;
+                        _galleryIndex = 0;
+                        _gallerySearchId = null;
+                        _imageCache = {};
+                        gallery.classList.add('hidden');
+                        galleryImg.classList.remove('gallery-image-loaded');
+                        galleryImg.src = '';
+                        return;
                     }
                     document.getElementById('searchInput').blur();
                     var tweak = document.getElementById('filterTweak');
                     if (tweak.classList.contains('active')) {
                         tweak.classList.remove('active');
                         updateResetVisibility();
+                    }
+                    return;
+                }
+                if (_galleryResults) {
+                    if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') {
+                        e.preventDefault();
+                        _goPrev();
+                        return;
+                    }
+                    if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') {
+                        e.preventDefault();
+                        _goNext();
+                        return;
                     }
                 }
             });
@@ -431,20 +553,42 @@
                                 }
                                 break;
                             case 'cancelled':
-                                info.textContent = 'Cancelled - ' + p.results.total + ' results';
-                                info.style.color = '#d97706';
-                                detail.textContent = '';
+                                var cSearchId = _currentSearchId;
                                 if (_currentSource) { _currentSource.close(); _currentSource = null; }
                                 _currentSearchId = null;
-                                setTimeout(function() { overlay.classList.add('hidden'); }, 2000);
+                                if (p.results && p.results.results && p.results.results.length) {
+                                    _gallerySearchId = cSearchId;
+                                    _galleryResults = p.results.results;
+                                    _galleryIndex = 0;
+                                    _imageCache = {};
+                                    gallery.classList.remove('hidden');
+                                    _goToImage(0);
+                                    overlay.classList.add('hidden');
+                                } else {
+                                    info.textContent = 'Cancelled - ' + (p.results ? p.results.total : 0) + ' results';
+                                    info.style.color = '#d97706';
+                                    detail.textContent = '';
+                                    setTimeout(function() { overlay.classList.add('hidden'); }, 2000);
+                                }
                                 break;
                             case 'complete':
-                                fill.style.width = '100%';
-                                info.textContent = 'Complete - ' + p.results.total + ' results';
-                                detail.textContent = p.results.workers + ' workers in ' + p.results.platoons + ' platoons';
+                                var cSearchId = _currentSearchId;
                                 if (_currentSource) { _currentSource.close(); _currentSource = null; }
                                 _currentSearchId = null;
-                                setTimeout(function() { overlay.classList.add('hidden'); }, 2000);
+                                if (p.results && p.results.results && p.results.results.length) {
+                                    _gallerySearchId = cSearchId;
+                                    _galleryResults = p.results.results;
+                                    _galleryIndex = 0;
+                                    _imageCache = {};
+                                    gallery.classList.remove('hidden');
+                                    _goToImage(0);
+                                    overlay.classList.add('hidden');
+                                } else {
+                                    fill.style.width = '100%';
+                                    info.textContent = 'Complete - ' + (p.results ? p.results.total : 0) + ' results';
+                                    detail.textContent = '';
+                                    setTimeout(function() { overlay.classList.add('hidden'); }, 2000);
+                                }
                                 break;
                             case 'error':
                                 info.textContent = 'Error: ' + (p.error || 'Unknown');
