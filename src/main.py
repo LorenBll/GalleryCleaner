@@ -93,7 +93,6 @@ def _send_request(request: PostRequest, method: str | None = None) -> PostRespon
 # ============================================================================
 
 CONFIG_PATH = Path(__file__).resolve().parent.parent / "resources" / "configuration.json"
-ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
 
 _config_cache: dict | None = None
 
@@ -113,26 +112,6 @@ def _load_configuration() -> dict:
     except (json.JSONDecodeError, OSError):
         _config_cache = {}
         return _config_cache
-
-
-def _parse_env_file() -> dict[str, str]:
-    if not ENV_PATH.exists():
-        return {}
-    env_dict: dict[str, str] = {}
-    try:
-        with open(ENV_PATH, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith("#") or "=" not in line:
-                    continue
-                key, _, value = line.partition("=")
-                key = key.strip()
-                value = value.strip()
-                if key:
-                    env_dict[key] = value
-    except OSError:
-        return {}
-    return env_dict
 
 
 class App(ctk.CTk):
