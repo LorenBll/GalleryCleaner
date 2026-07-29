@@ -25,15 +25,9 @@ GalleryCleaner is scoped to rapid image-folder review and provides a focused des
 
 ## Run
 
-1. Windows: run `scripts\run.bat`.
-2. Unix-like systems: run `bash scripts/run.sh`.
-3. Manual: run `python src/main.py` from the project root.
-
-## Supported Image Formats
-
-GalleryCleaner currently recognizes the following image extensions:
-
-- `.jpg`, `.jpeg`, `.png`, `.gif`, `.bmp`, `.tiff`, `.webp`, `.svg`, `.ico`, `.tga`, `.psd`
+1. Windows: run `scripts\run.bat` (add `--verbose` for debug output).
+2. Unix-like: run `bash scripts/run.sh` (add `--verbose` for debug output).
+3. Manual: run `python src/main.py` from the project root (add `--verbose` for debug output).
 
 ## Usage
 
@@ -45,7 +39,7 @@ GalleryCleaner currently recognizes the following image extensions:
 
 If no supported images are found, the application returns to the directory-selection workflow.
 
-## Keyboard Shortcuts
+### Keyboard Shortcuts
 
 | Key | Action |
 |---|---|
@@ -58,7 +52,32 @@ If no supported images are found, the application returns to the directory-selec
 | `Esc` | Return to directory selection |
 | `Enter` | Submit directory path |
 
-## Project Structure
+## Notes
+
+### Supported Image Formats
+
+GalleryCleaner currently recognizes the following image extensions:
+
+- `.jpg`, `.jpeg`, `.png`, `.gif`, `.bmp`, `.tiff`, `.webp`, `.svg`, `.ico`, `.tga`, `.psd`
+
+### Error Handling
+
+GalleryCleaner validates:
+
+- directory existence,
+- directory permissions,
+- readable image availability.
+
+Unreadable or unsupported images fail gracefully during loading without terminating the application.
+
+### Tech Stack
+
+- **Language:** Python
+- **UI Framework:** CustomTkinter
+- **Image Processing:** Pillow
+- **File Removal:** Send2Trash
+
+### Project Structure
 
 ```text
 GalleryCleaner/
@@ -78,28 +97,16 @@ GalleryCleaner/
 └── README.md
 ```
 
-## Error Handling
-
-GalleryCleaner validates:
-
-- directory existence,
-- directory permissions,
-- readable image availability.
-
-Unreadable or unsupported images fail gracefully during loading without terminating the application.
-
-## Tech Stack
-
-- **Language:** Python
-- **UI Framework:** CustomTkinter
-- **Image Processing:** Pillow
-- **File Removal:** Send2Trash
+---
 
 ## Support
+
 - Open an issue on [GitHub](https://github.com/LorenBll/GalleryCleaner/issues) for bug reports, feature requests, or help.
 
 ## License
+
 - [LICENSE](LICENSE)
 
 ## Author
+
 - [LorenBll](https://github.com/LorenBll)

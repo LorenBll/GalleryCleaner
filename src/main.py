@@ -8,6 +8,7 @@ import json
 import urllib.request
 import urllib.error
 from datetime import datetime
+from pathlib import Path
 from PIL import Image
 import send2trash
 
@@ -55,11 +56,12 @@ class ToolTip:
 
 
 
-def _send_request(request: PostRequest) -> PostResponse:
+def _send_request(request: PostRequest, method: str | None = None) -> PostResponse:
     req = urllib.request.Request(
         request.url,
         data=request.body,
         headers=request.headers,
+        method=method,
     )
     try:
         with urllib.request.urlopen(req, timeout=request.timeout) as resp:
@@ -84,6 +86,53 @@ def _send_request(request: PostRequest) -> PostResponse:
             headers=dict(exc.headers),
             json_body=json_body,
         )
+
+
+# ============================================================================
+# CONFIGURATION LOADING
+# ============================================================================
+
+CONFIG_PATH = Path(__file__).resolve().parent.parent / "resources" / "configuration.json"
+ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
+
+_config_cache: dict | None = None
+
+
+def _load_configuration() -> dict:
+    global _config_cache
+    if _config_cache is not None:
+        return _config_cache
+    if not CONFIG_PATH.exists():
+        _config_cache = {}
+        return _config_cache
+    try:
+        with open(CONFIG_PATH, "r", encoding="utf-8-sig") as f:
+            config = json.load(f)
+        _config_cache = config
+        return config
+    except (json.JSONDecodeError, OSError):
+        _config_cache = {}
+        return _config_cache
+
+
+def _parse_env_file() -> dict[str, str]:
+    if not ENV_PATH.exists():
+        return {}
+    env_dict: dict[str, str] = {}
+    try:
+        with open(ENV_PATH, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, _, value = line.partition("=")
+                key = key.strip()
+                value = value.strip()
+                if key:
+                    env_dict[key] = value
+    except OSError:
+        return {}
+    return env_dict
 
 
 class App(ctk.CTk):
@@ -149,6 +198,22 @@ class App(ctk.CTk):
         # Configure grid layout (optional, for future use)
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
+        
+        # Load configuration
+        config = _load_configuration()
+        self.diskidentifier_port = config.get("diskidentifierPort", 49157)
+        if isinstance(self.diskidentifier_port, str) and self.diskidentifier_port.isdigit():
+            self.diskidentifier_port = int(self.diskidentifier_port)
+        if not isinstance(self.diskidentifier_port, int):
+            self.diskidentifier_port = 49157
+        self.servicehandler_enabled = config.get("servicehandlerEnabled", True)
+        if isinstance(self.servicehandler_enabled, str):
+            self.servicehandler_enabled = self.servicehandler_enabled.strip().lower() in ("true", "1", "yes")
+        self.servicehandler_port = config.get("servicehandlerPort", 49155)
+        if isinstance(self.servicehandler_port, str) and self.servicehandler_port.isdigit():
+            self.servicehandler_port = int(self.servicehandler_port)
+        if not isinstance(self.servicehandler_port, int):
+            self.servicehandler_port = 49155
         
         # Create display layers
         self.create_layers()
@@ -1208,59 +1273,76 @@ class App(ctk.CTk):
 
 
 
-    DISK_IDENTIFIER_PORT = 49157
-
     def _resolve_disk_identifier_path(self, path_str: str) -> str:
         stripped = path_str.strip()
         if not stripped:
             return path_str
 
-        sep_idx = -1
-        for sep in ("/", "\\"):
-            idx = stripped.find(sep)
-            if idx != -1 and (sep_idx == -1 or idx < sep_idx):
-                sep_idx = idx
+        if "::" not in stripped:
+            return path_str
 
-        if sep_idx == -1:
-            first_component = stripped
-            rest = ""
-        else:
-            first_component = stripped[:sep_idx]
-            rest = stripped[sep_idx + 1:].lstrip("/\\")
+        disk_identifier, _, relative_path = stripped.partition("::")
+        disk_identifier = disk_identifier.strip()
+        relative_path = relative_path.strip().lstrip("\\/")
 
-        if len(first_component) == 64 and all(c in "0123456789abcdefABCDEF" for c in first_component):
-            identifier = first_component
+        if len(disk_identifier) == 64 and all(c in "0123456789abcdefABCDEF" for c in disk_identifier):
+            disk_root = self._locate_disk_identifier(disk_identifier)
+            if relative_path:
+                return os.path.join(disk_root, relative_path)
+            return disk_root
 
+        return path_str
+
+    def _locate_disk_identifier(self, identifier: str) -> str:
+        """Resolve a disk identifier to its root path, with ServiceHandler fallback."""
+        tried_ports = []
+
+        def _try_di(port: int) -> str | None:
+            tried_ports.append(port)
             req = PostRequest(
-                url=f"http://127.0.0.1:{self.DISK_IDENTIFIER_PORT}/api/locate/disk",
+                url=f"http://127.0.0.1:{port}/api/locate/disk",
                 body=json.dumps({"disk_identifier": identifier}).encode("utf-8"),
                 timeout=5,
                 headers={"Content-Type": "application/json"},
             )
-
-            resp = _send_request(req)
-
+            resp = _send_request(req, method="GET")
             if resp.status_code == 404:
                 raise ValueError(
                     f"Disk identifier '{identifier[:16]}...' not found by DiskIdentifier service. "
                     "Make sure the disk is registered."
                 )
-            if resp.status_code != 200 or not isinstance(resp.json_body, dict):
-                raise ConnectionError(
-                    f"DiskIdentifier service returned error (HTTP {resp.status_code})"
+            if resp.status_code == 200 and isinstance(resp.json_body, dict):
+                return resp.json_body.get("path", "")
+            return None
+
+        # Try configured port first
+        result = _try_di(self.diskidentifier_port)
+        if result:
+            return result
+
+        # Fallback: discover DiskIdentifier port via ServiceHandler (if enabled)
+        if self.servicehandler_enabled:
+            try:
+                req = PostRequest(
+                    url=f"http://127.0.0.1:{self.servicehandler_port}/api/question/service",
+                    body=json.dumps({"name": "DiskIdentifier"}).encode("utf-8"),
+                    timeout=5,
+                    headers={"Content-Type": "application/json"},
                 )
+                resp = _send_request(req)
+                if resp.status_code == 200 and isinstance(resp.json_body, dict):
+                    discovered_port = resp.json_body.get("port")
+                    if isinstance(discovered_port, int) and discovered_port not in tried_ports:
+                        result = _try_di(discovered_port)
+                        if result:
+                            return result
+            except Exception:
+                pass
 
-            disk_root = resp.json_body.get("path", "")
-            if not disk_root:
-                raise ValueError(
-                    f"DiskIdentifier returned empty path for identifier '{identifier[:16]}...'"
-                )
-
-            if rest:
-                return os.path.join(disk_root, rest)
-            return disk_root
-
-        return path_str
+        raise ConnectionError(
+            f"DiskIdentifier service is not available on ports {tried_ports}. "
+            "Make sure DiskIdentifier is running and registered with ServiceHandler."
+        )
 
 
 def main() -> None:
