@@ -1279,7 +1279,7 @@ class App(ctk.CTk):
         def _try_di(port: int) -> str | None:
             tried_ports.append(port)
             req = PostRequest(
-                url=f"http://127.0.0.1:{port}/api/locate/disk",
+                url=f"http://127.0.0.1:{port}/api/disk/locate",
                 body=json.dumps({"disk_identifier": identifier}).encode("utf-8"),
                 timeout=5,
                 headers={"Content-Type": "application/json"},
