@@ -13,14 +13,14 @@ GalleryCleaner is scoped to rapid image-folder review and provides a focused des
 - **Recursive Directory Review** — optional recursive scanning allows images from nested subdirectories to be reviewed as a single navigation queue.
 - **Persistent or Visual Rotation** — image rotation supports two modes: visual-only rotation that affects preview state, and persistent file-level rotation written directly to disk.
 - **Image Preloading** — nearby images are asynchronously preloaded into memory to improve navigation responsiveness while browsing large collections.
-- **File Metadata Preview** — the viewer displays filename, file type, file size, resolution, creation timestamp, and modification timestamp.
+- **File Metadata Preview** — the viewer displays file name (without extension), file type, file size, resolution, creation timestamp, and modification timestamp.
 - **Cross-Platform Desktop Application** — GalleryCleaner works on Windows, macOS, and Linux through a CustomTkinter-based desktop interface.
 
 ## Setup
 
 1. Install the Python dependencies with `pip install -r requirements.txt`.
-2. Ensure the `resources/images/` directory remains in place so application icons can be loaded.
-3. Optionally use the provided setup scripts to create a local virtual environment automatically.
+2. Keep the `resources/images/` directory in place so application icons can be loaded (button text fallbacks are used if icons are missing).
+3. Optionally use the provided setup scripts to create a local virtual environment automatically (the run scripts require this virtual environment).
 4. Leave the project structure intact so the application can find `resources/` and `src/`.
 
 ## Run
@@ -37,7 +37,7 @@ GalleryCleaner is scoped to rapid image-folder review and provides a focused des
 4. Submit the directory path to begin browsing.
 5. Navigate through images and move unwanted files to trash using keyboard shortcuts or UI controls.
 
-If no supported images are found, the application returns to the directory-selection workflow.
+If no supported images are found, an error message is displayed on the directory-selection screen.
 
 ### Keyboard Shortcuts
 
@@ -65,10 +65,26 @@ GalleryCleaner currently recognizes the following image extensions:
 GalleryCleaner validates:
 
 - directory existence,
-- directory permissions,
+- directory read, write, and execute permissions,
 - readable image availability.
 
 Unreadable or unsupported images fail gracefully during loading without terminating the application.
+
+### DiskIdentifier Integration
+
+The directory field also accepts DiskIdentifier references in the form `<64-character hex hash>::<relative path>`. GalleryCleaner resolves them by querying the DiskIdentifier service over HTTP, falling back to ServiceHandler port discovery when the configured port does not respond.
+
+### Configuration
+
+`resources/configuration.json` keys:
+
+- `diskidentifierPort` — DiskIdentifier service port (default: `49157`).
+- `servicehandlerEnabled` — ServiceHandler port-discovery fallback (default: `true`).
+- `servicehandlerPort` — ServiceHandler service port (default: `49155`).
+
+### Logging
+
+Each run writes a log file to `logs/` named `DD-MM-YYYY_HH.MM.SS.log` and mirrors the same messages to the console.
 
 ### Tech Stack
 
@@ -94,8 +110,11 @@ GalleryCleaner/
 │   └── run.sh
 ├── resources/
 │   ├── images/
-│   └── configuration.json
+│   ├── configuration.json
+│   ├── search_index.json
+│   └── search_index_reverse.json
 ├── requirements.txt
+├── .gitignore
 ├── LICENSE
 └── README.md
 ```
