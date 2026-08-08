@@ -1,3 +1,27 @@
+# ============================================================================
+# STARTUP DEPENDENCY CHECK
+# ============================================================================
+_missing_libraries: list[str] = []
+for _module, _package in {
+    "customtkinter": "customtkinter",
+    "tkinter": "tkinter",
+    "PIL": "pillow",
+    "send2trash": "send2trash",
+}.items():
+    try:
+        __import__(_module)
+    except ImportError:
+        _missing_libraries.append(_package)
+
+if _missing_libraries:
+    import sys
+    sys.stderr.write(
+        "ERROR: Missing required libraries: "
+        + ", ".join(_missing_libraries)
+        + ". Install them with: pip install -r requirements.txt\n"
+    )
+    sys.exit(1)
+
 import customtkinter as ctk
 import tkinter as tk
 import sys
@@ -5,6 +29,7 @@ import threading
 import time
 import os
 import json
+import logging
 import urllib.request
 import urllib.error
 from datetime import datetime
@@ -14,6 +39,7 @@ import send2trash
 
 from models import PostRequest, PostResponse
 
+logger = logging.getLogger(__name__)
 
 
 class ToolTip:
@@ -193,6 +219,12 @@ class App(ctk.CTk):
             self.servicehandler_port = int(self.servicehandler_port)
         if not isinstance(self.servicehandler_port, int):
             self.servicehandler_port = 49155
+        
+        logger.info(
+            f"Starting GalleryCleaner: diskidentifier port={self.diskidentifier_port}, "
+            f"servicehandler enabled={self.servicehandler_enabled}, "
+            f"servicehandler port={self.servicehandler_port}"
+        )
         
         # Create display layers
         self.create_layers()
@@ -682,15 +714,10 @@ class App(ctk.CTk):
                     self.image_label.image = None
                     
         except Exception as e:
+            logger.error(f"Error loading image {image_path}: {e}", exc_info=True)
             self.image_label.configure(image=None, text=f"Error loading image: {str(e)}")
             self.image_label.image = None
 
-    def clear_image(self) -> None:
-        """Clear the image display"""
-        self.clear_container_completely()
-        self.image_label.configure(image=None, text="No image selected")
-        self.image_label.image = None
-    
     def clear_container_completely(self) -> None:
         """Clear all resources and reset display state"""
         # Clear image display
@@ -783,34 +810,41 @@ class App(ctk.CTk):
         try:
             directory_path = self._resolve_disk_identifier_path(directory_path)
         except (ValueError, ConnectionError) as e:
+            logger.error(f"DiskIdentifier path resolution failed for '{directory_path}': {e}")
             self.display_error(self.error_label, str(e))
             return
         
         # Check if input is empty
         if not directory_path:
+            logger.warning("Directory submission rejected: empty path")
             self.display_error(self.error_label, "Please enter a directory path")
             return
         
         # Check if directory exists
         if not os.path.exists(directory_path):
+            logger.error(f"Directory does not exist: {directory_path}")
             self.display_error(self.error_label, "Directory does not exist")
             return
         
         # Check if path is actually a directory
         if not os.path.isdir(directory_path):
+            logger.error(f"Path is not a directory: {directory_path}")
             self.display_error(self.error_label, "Path is not a directory")
             return
         
         # Check read, write, and execute permissions
         if not os.access(directory_path, os.R_OK):
+            logger.error(f"Cannot read from directory: {directory_path}")
             self.display_error(self.error_label, "Cannot read from directory")
             return
         
         if not os.access(directory_path, os.W_OK):
+            logger.error(f"Cannot write to directory: {directory_path}")
             self.display_error(self.error_label, "Cannot write to directory")
             return
         
         if not os.access(directory_path, os.X_OK):
+            logger.error(f"Cannot execute in directory: {directory_path}")
             self.display_error(self.error_label, "Cannot execute in directory")
             return
         
@@ -824,10 +858,12 @@ class App(ctk.CTk):
             
             # Check if the files list is empty
             if not images:
+                logger.warning(f"No images found in {directory_path} (recursive={is_recursive})")
                 self.display_error(self.error_label, "The directory has no images. Activate the Recursive Option if the images are in sub-directories")
                 return
             
             self.directory_images = images
+            logger.info(f"Loaded {len(images)} images from {directory_path} (recursive={is_recursive})")
             self.current_directory = directory_path
             self.current_image_index = 0
             self.current_image_path = images[0] if images else None
@@ -844,8 +880,10 @@ class App(ctk.CTk):
             self.load_first_image_file()
             
         except PermissionError:
+            logger.error(f"Permission denied accessing directory: {directory_path}")
             self.display_error(self.error_label, "Permission denied accessing directory")
         except Exception as e:
+            logger.error(f"Error accessing directory {directory_path}: {e}", exc_info=True)
             self.display_error(self.error_label, f"Error accessing directory: {str(e)}")
 
     def on_left_arrow_click(self) -> None:
@@ -877,11 +915,13 @@ class App(ctk.CTk):
                 
                 send2trash.send2trash(self.current_image_path)
                 self.directory_images.remove(self.current_image_path)
+                logger.info(f"Trashed image: {self.current_image_path}")
                 
                 # Clear entire cache and force rebuild
                 self.image_cache.clear()
                 
                 if not self.directory_images:
+                    logger.info("All images were cleared from directory")
                     self.input_box.delete(0, "end")
                     self.display_error(self.error_label, "All images were cleared")
                     self.show_layer1()
@@ -896,8 +936,8 @@ class App(ctk.CTk):
                 # Rebuild cache for surrounding images
                 self.preload_images(self.current_image_index)
                 
-            except Exception:
-                pass
+            except Exception as e:
+                logger.error(f"Failed to move image to trash: {e}", exc_info=True)
 
     def on_refresh_click(self) -> None:
         """Handle refresh button click - reconstruct the files list and reload the second layer"""
@@ -911,6 +951,7 @@ class App(ctk.CTk):
                 images = self.list_images(self.current_directory, is_recursive)
                 
                 if not images:
+                    logger.warning(f"No images found after refresh in {self.current_directory}")
                     self.input_box.delete(0, "end")
                     self.display_error(self.error_label, "No images found after refresh")
                     self.show_layer1()
@@ -925,9 +966,10 @@ class App(ctk.CTk):
                 
                 self.current_image_index = new_index
                 self.current_image_path = images[new_index]
+                logger.info(f"Refreshed directory {self.current_directory}: {len(images)} images")
                 self.display_file(self.current_image_path)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.error(f"Failed to refresh directory {getattr(self, 'current_directory', None)}: {e}", exc_info=True)
     
     def on_rotate_left_click(self) -> None:
         """Handle rotate left button click - rotate image 90 degrees counter-clockwise"""
@@ -1151,7 +1193,8 @@ class App(ctk.CTk):
             new_height = max(new_height, 100)
             
             return ctk.CTkImage(light_image=image, dark_image=image, size=(new_width, new_height))
-        except Exception:
+        except Exception as e:
+            logger.error(f"Failed to load and resize image {image_path}: {e}")
             return None
 
     def preload_images(self, center_index:int) -> None:
@@ -1165,11 +1208,7 @@ class App(ctk.CTk):
         images_to_keep = set()
         for i in range(start_index, end_index):
             if i < len(self.directory_images):
-                image_path = self.directory_images[i]
-                if self.is_image_file(image_path):
-                    images_to_keep.add(image_path)
-                else:
-                    images_to_keep.add(image_path)
+                images_to_keep.add(self.directory_images[i])
         
         keys_to_remove = [key for key in self.image_cache.keys() if key not in images_to_keep]
         for key in keys_to_remove:
@@ -1179,14 +1218,10 @@ class App(ctk.CTk):
             for i in range(start_index, end_index):
                 if i < len(self.directory_images):
                     image_path = self.directory_images[i]
-                    if self.is_image_file(image_path):
-                        if image_path not in self.image_cache:
-                            try:
-                                photo = self.load_and_resize_image(image_path)
-                                if photo:
-                                    self.image_cache[image_path] = photo
-                            except Exception:
-                                pass
+                    if image_path not in self.image_cache:
+                        photo = self.load_and_resize_image(image_path)
+                        if photo:
+                            self.image_cache[image_path] = photo
         
         threading.Thread(target=preload_worker, daemon=True).start()
 
@@ -1246,7 +1281,7 @@ class App(ctk.CTk):
             
         except Exception as e:
             # If rotation fails, show an error but don"t crash
-            print(f"Error rotating image: {str(e)}")
+            logger.error(f"Error rotating image {image_path}: {e}", exc_info=True)
             # Still try to display the original image
             self.display_image(image_path)
 
@@ -1266,6 +1301,7 @@ class App(ctk.CTk):
 
         if len(disk_identifier) == 64 and all(c in "0123456789abcdefABCDEF" for c in disk_identifier):
             disk_root = self._locate_disk_identifier(disk_identifier)
+            logger.info(f"Resolved disk identifier '{disk_identifier[:16]}...' to '{disk_root}'")
             if relative_path:
                 return os.path.join(disk_root, relative_path)
             return disk_root
@@ -1286,10 +1322,12 @@ class App(ctk.CTk):
             )
             resp = _send_request(req, method="GET")
             if resp.status_code == 404:
-                raise ValueError(
+                error_msg = (
                     f"Disk identifier '{identifier[:16]}...' not found by DiskIdentifier service. "
                     "Make sure the disk is registered."
                 )
+                logger.error(error_msg)
+                raise ValueError(error_msg)
             if resp.status_code == 200 and isinstance(resp.json_body, dict):
                 return resp.json_body.get("path", "")
             return None
@@ -1315,16 +1353,34 @@ class App(ctk.CTk):
                         result = _try_di(discovered_port)
                         if result:
                             return result
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"ServiceHandler discovery of DiskIdentifier port failed: {e}")
 
-        raise ConnectionError(
+        error_msg = (
             f"DiskIdentifier service is not available on ports {tried_ports}. "
             "Make sure DiskIdentifier is running and registered with ServiceHandler."
         )
+        logger.error(error_msg)
+        raise ConnectionError(error_msg)
+
+
+def _setup_logging() -> None:
+    logs_dir = Path(__file__).resolve().parent.parent / "logs"
+    logs_dir.mkdir(exist_ok=True)
+    log_file = logs_dir / f"{datetime.now().strftime('%d-%m-%Y_%H.%M.%S')}.log"
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.StreamHandler(),
+            logging.FileHandler(log_file, encoding="utf-8"),
+        ],
+    )
 
 
 def main() -> None:
+    _setup_logging()
+    logger.info("GalleryCleaner starting")
     app = App()
     app.mainloop()
 

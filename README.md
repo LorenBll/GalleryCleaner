@@ -25,9 +25,9 @@ GalleryCleaner is scoped to rapid image-folder review and provides a focused des
 
 ## Run
 
-1. Windows: run `scripts\run.bat` (add `--verbose` for debug output).
-2. Unix-like: run `bash scripts/run.sh` (add `--verbose` for debug output).
-3. Manual: run `python src/main.py` from the project root (add `--verbose` for debug output).
+1. Windows: run `scripts\run.bat`.
+2. Unix-like: run `bash scripts/run.sh`.
+3. Manual: run `python src/main.py` from the project root.
 
 ## Usage
 
@@ -82,16 +82,19 @@ Unreadable or unsupported images fail gracefully during loading without terminat
 ```text
 GalleryCleaner/
 ├── src/
-│   └── main.py
+│   ├── main.py
+│   └── models/
+│       ├── __init__.py
+│       ├── post_request.py
+│       └── post_response.py
 ├── scripts/
 │   ├── setup.bat
 │   ├── setup.sh
 │   ├── run.bat
 │   └── run.sh
 ├── resources/
-│   └── images/
-├── docs/
-│   └── images/
+│   ├── images/
+│   └── configuration.json
 ├── requirements.txt
 ├── LICENSE
 └── README.md
