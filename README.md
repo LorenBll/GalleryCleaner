@@ -1,10 +1,21 @@
 # GalleryCleaner
 
-GalleryCleaner is a local keyboard-first image review application. It solves the problem of cleaning large image collections quickly by minimizing clicks, dialogs, and navigation friction during image triage.
+GalleryCleaner is a local keyboard-first image review application. It solves the problem of cleaning large image collections quickly by minimising clicks, dialogues, and navigation friction during image triage.
+
+## Table of Contents
+
+- [About](#about)
+- [Setup](#setup)
+- [Run](#run)
+- [Usage](#usage)
+- [Notes](#notes)
+- [Support](#support)
+- [Licence](#licence)
+- [Author](#author)
 
 ## About
 
-GalleryCleaner is scoped to rapid image-folder review and provides a focused desktop workflow for navigating, rotating, refreshing, and trashing images with minimal interaction overhead.
+GalleryCleaner is scoped to rapid image-folder review and provides a focussed desktop workflow for navigating, rotating, refreshing, and trashing images with minimal interaction overhead.
 
 **Features:**
 
@@ -56,7 +67,7 @@ If no supported images are found, an error message is displayed on the directory
 
 ### Supported Image Formats
 
-GalleryCleaner currently recognizes the following image extensions:
+GalleryCleaner currently recognises the following image extensions:
 
 - `.jpg`, `.jpeg`, `.png`, `.gif`, `.bmp`, `.tiff`, `.webp`, `.svg`, `.ico`, `.tga`, `.psd`
 
@@ -125,7 +136,7 @@ GalleryCleaner/
 
 - Open an issue on [GitHub](https://github.com/LorenBll/GalleryCleaner/issues) for bug reports, feature requests, or help.
 
-## License
+## Licence
 
 - [LICENSE](LICENSE)
 

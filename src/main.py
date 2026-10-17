@@ -147,7 +147,7 @@ class App(ctk.CTk):
     # ===== SETUP METHODS =====
     
     def __init__(self) -> None:
-        """Initialize the main application window and UI components."""
+        """Initialise the main application window and UI components."""
         
         super().__init__()
         
@@ -164,11 +164,11 @@ class App(ctk.CTk):
         # Prevent fullscreen mode
         self.resizable(False, False)
         
-        # Set theme and color
+        # Set theme and colour
         ctk.set_appearance_mode("system")  # Default system theme
-        ctk.set_default_color_theme("blue")  # Blue color theme
+        ctk.set_default_color_theme("blue")  # Blue colour theme
         
-        # Configure window close behavior
+        # Configure window close behaviour
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         
         # Bind ESC key to cancel focus
@@ -229,13 +229,13 @@ class App(ctk.CTk):
         # Create display layers
         self.create_layers()
         
-        # Initialize current image index
+        # Initialise current image index
         self.current_image_index = 0
         
-        # Initialize image cache for preloading
+        # Initialise image cache for preloading
         self.image_cache = {}
         
-        # Initialize rotation tracking per image
+        # Initialise rotation tracking per image
         self.image_rotations = {}  # Dictionary to store rotation per image path
         self.current_rotation = 0  # 0, 90, 180, 270 degrees
         
@@ -325,7 +325,7 @@ class App(ctk.CTk):
         self.left_sidebar.grid(row=0, column=0, rowspan=2, sticky="ns", padx=5, pady=5)
         self.left_sidebar.grid_propagate(False)  # Prevent resizing
         
-        # Configure left sidebar grid for centering
+        # Configure left sidebar grid for centring
         self.left_sidebar.grid_columnconfigure(0, weight=1)
         self.left_sidebar.grid_rowconfigure(0, weight=1)
         
@@ -339,7 +339,7 @@ class App(ctk.CTk):
         except Exception:
             left_arrow_icon = None
         
-        # Left sidebar button (centered)
+        # Left sidebar button (centred)
         self.left_button = self.create_button(
             self.left_sidebar,
             text="◀" if left_arrow_icon is None else "",
@@ -356,7 +356,7 @@ class App(ctk.CTk):
         self.right_sidebar.grid(row=0, column=2, rowspan=2, sticky="ns", padx=5, pady=5)
         self.right_sidebar.grid_propagate(False)  # Prevent resizing
         
-        # Configure right sidebar grid for centering
+        # Configure right sidebar grid for centring
         self.right_sidebar.grid_columnconfigure(0, weight=1)
         self.right_sidebar.grid_rowconfigure(0, weight=1)
         
@@ -370,7 +370,7 @@ class App(ctk.CTk):
         except Exception:
             right_arrow_icon = None
         
-        # Right sidebar button (centered)
+        # Right sidebar button (centred)
         self.right_button = self.create_button(
             self.right_sidebar,
             text="▶" if right_arrow_icon is None else "",
@@ -387,7 +387,7 @@ class App(ctk.CTk):
         self.green_section.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
         self.green_section.grid_propagate(False)  # Prevent resizing
         
-        # Configure green section grid for centering image and labels
+        # Configure green section grid for centring image and labels
         self.green_section.grid_columnconfigure(0, weight=1)
         self.green_section.grid_rowconfigure(0, weight=1)  # Image display area
         self.green_section.grid_rowconfigure(1, weight=0)  # Combined index and progress bar area
@@ -443,7 +443,7 @@ class App(ctk.CTk):
         # Add combined frame for file information (name and details)
         self.info_frame = ctk.CTkFrame(self.green_section, fg_color="transparent")
         self.info_frame.grid(row=2, column=0, sticky="", padx=20, pady=(5, 10))
-        self.info_frame.grid_columnconfigure(0, weight=1)  # Center the content
+        self.info_frame.grid_columnconfigure(0, weight=1)  # Centre the content
         
         # Add combined file information label (name and details together)
         self.image_details_label = ctk.CTkLabel(
@@ -460,7 +460,7 @@ class App(ctk.CTk):
         self.bottom_middle.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
         self.bottom_middle.grid_propagate(False)  # Prevent resizing
         
-        # Configure bottom middle grid for centering buttons and checkbox
+        # Configure bottom middle grid for centring buttons and checkbox
         self.bottom_middle.grid_columnconfigure(0, weight=1)
         self.bottom_middle.grid_columnconfigure(1, weight=0)  # Back button
         self.bottom_middle.grid_columnconfigure(2, weight=0)  # Delete button
@@ -1018,7 +1018,7 @@ class App(ctk.CTk):
         sys.exit()
 
     def cancel_focus(self, event=None) -> None:
-        """Cancel focus on any focused widget when ESC is pressed"""
+        """Cancel focus on any focussed widget when ESC is pressed"""
         # Only cancel focus if we"re on layer 1, otherwise handle back functionality
         if hasattr(self, "layer1") and self.layer1.winfo_viewable():
             self.focus_set()
@@ -1198,7 +1198,7 @@ class App(ctk.CTk):
             return None
 
     def preload_images(self, center_index:int) -> None:
-        """Preload images around the center index to cache"""
+        """Preload images around the centre index to cache"""
         if not hasattr(self, "directory_images") or not self.directory_images:
             return
         
