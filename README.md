@@ -1,38 +1,41 @@
 # GalleryCleaner
 
-GalleryCleaner is a local keyboard-first image review application. It solves the problem of cleaning large image collections quickly by minimising clicks, dialogues, and navigation friction during image triage.
+GalleryCleaner is a local, keyboard-first image review application for cleaning large image collections with minimal clicks, dialogues, and navigation friction.
+
+Developer documentation: [README-DEV.md](README-DEV.md).
 
 ## Table of Contents
 
-- [About](#about)
+- [Features](#features)
 - [Setup](#setup)
 - [Run](#run)
 - [Usage](#usage)
-- [Notes](#notes)
+- [Configuration](#configuration)
 - [Support](#support)
 - [Licence](#licence)
 - [Author](#author)
 
-## About
+## Features
 
-GalleryCleaner is scoped to rapid image-folder review and provides a focussed desktop workflow for navigating, rotating, refreshing, and trashing images with minimal interaction overhead.
-
-**Features:**
-
-- **Keyboard-First Workflow** — primary navigation and actions are designed around keyboard shortcuts for rapid image review.
-- **Safe File Removal** — images are moved to the system trash using `send2trash` instead of being permanently deleted.
-- **Recursive Directory Review** — optional recursive scanning allows images from nested subdirectories to be reviewed as a single navigation queue.
-- **Persistent or Visual Rotation** — image rotation supports two modes: visual-only rotation that affects preview state, and persistent file-level rotation written directly to disk.
-- **Image Preloading** — nearby images are asynchronously preloaded into memory to improve navigation responsiveness while browsing large collections.
-- **File Metadata Preview** — the viewer displays file name (without extension), file type, file size, resolution, creation timestamp, and modification timestamp.
-- **Cross-Platform Desktop Application** — GalleryCleaner works on Windows, macOS, and Linux through a CustomTkinter-based desktop interface.
+- **Keyboard-first workflow** — navigate and act on images with single-key shortcuts so a large collection can be triaged without leaving the keyboard; press `A` and `D` to move between images, `S` to trash the current image, and `Ctrl+Q` and `Ctrl+E` to rotate.
+- **Safe file removal** — move the current image to the operating system trash with `send2trash` instead of deleting it permanently, so a mistaken removal can be undone; press `S`, use the Down Arrow, or click the trash button.
+- **Recursive directory review** — review images from nested subdirectories as a single navigation queue; tick "Operate Recursively" on the directory screen before submitting so nested images are included.
+- **Two rotation modes** — rotate an image 90° clockwise or counter-clockwise either in the preview only or on disk, so a rotation can be previewed before it is made permanent; tick "Replicate Rotation On File" (on by default) to write the rotation to the file, or clear it to keep the rotation in the preview only.
+- **Image preloading** — preload images around the current position in a background thread to keep navigation responsive in large collections; preloading runs automatically as images are displayed.
+- **File metadata preview** — show the file name without extension, format, size, resolution, creation timestamp, and modification timestamp beneath the image, so the current file can be judged without leaving the viewer.
+- **Progress indication** — show the current image index, a progress bar, and a percentage so the position in the queue is always visible.
+- **Refresh** — rescan the current directory with `Ctrl+R` after files change outside the application, keeping the current image selected when it still exists.
+- **DiskIdentifier references** — accept `<64-character hex hash>::<relative path>` references in the directory field and resolve them to absolute paths by querying the DiskIdentifier service, so images can be addressed independently of drive letters.
+- **Cross-platform desktop application** — run on Windows, macOS, and Linux through a CustomTkinter desktop interface.
 
 ## Setup
 
-1. Install the Python dependencies with `pip install -r requirements.txt`.
-2. Keep the `resources/images/` directory in place so application icons can be loaded (button text fallbacks are used if icons are missing).
-3. Optionally use the provided setup scripts to create a local virtual environment automatically (the run scripts require this virtual environment).
-4. Leave the project structure intact so the application can find `resources/` and `src/`.
+1. Install Python 3.10 or higher. `src/main.py` uses `X | None` union annotations that are evaluated at run time, and these require Python 3.10.
+2. Clone the repository.
+3. Create a virtual environment and activate it, or run the provided setup script (`scripts\setup.bat` on Windows, `bash scripts/setup.sh` on Unix-like systems), which creates `.venv` and installs the dependencies.
+4. Install the dependencies with `pip install -r requirements.txt` (`customtkinter`, `pillow`, and `send2trash`).
+5. Keep the repository layout intact. The application loads `resources/configuration.json` and the icons in `resources/images/` relative to the project root, and imports its modules from `src/`.
+6. Keep `resources/images/` populated so the button icons load. When an icon is missing, the corresponding button falls back to a text label and the application still runs.
 
 ## Run
 
@@ -40,15 +43,17 @@ GalleryCleaner is scoped to rapid image-folder review and provides a focussed de
 2. Unix-like: run `bash scripts/run.sh`.
 3. Manual: run `python src/main.py` from the project root.
 
+The run scripts activate `.venv` and start `src/main.py`. They accept no command-line options, and they stop with an error when `.venv` does not exist, so run the setup script first.
+
 ## Usage
 
 1. Launch the application.
-2. Enter an absolute directory path containing images.
-3. Optionally enable recursive scanning to include subdirectories.
-4. Submit the directory path to begin browsing.
-5. Navigate through images and move unwanted files to trash using keyboard shortcuts or UI controls.
+2. Enter an absolute directory path that contains images, or a DiskIdentifier reference.
+3. Optionally tick "Operate Recursively" to include images from subdirectories.
+4. Submit the path with the Submit button or the Enter key.
+5. Navigate the images and move unwanted files to the trash with the keyboard shortcuts or the on-screen buttons.
 
-If no supported images are found, an error message is displayed on the directory-selection screen.
+If no supported images are found, the directory screen displays an error message.
 
 ### Keyboard Shortcuts
 
@@ -63,74 +68,27 @@ If no supported images are found, an error message is displayed on the directory
 | `Esc` | Return to directory selection |
 | `Enter` | Submit directory path |
 
-## Notes
-
 ### Supported Image Formats
 
-GalleryCleaner currently recognises the following image extensions:
-
-- `.jpg`, `.jpeg`, `.png`, `.gif`, `.bmp`, `.tiff`, `.webp`, `.svg`, `.ico`, `.tga`, `.psd`
+GalleryCleaner recognises the extensions `.jpg`, `.jpeg`, `.png`, `.gif`, `.bmp`, `.tiff`, `.webp`, `.svg`, `.ico`, `.tga`, and `.psd`. Directory listings ignore any file whose name contains `desktop.ini`.
 
 ### Error Handling
 
-GalleryCleaner validates:
+Before browsing, GalleryCleaner checks that the path exists, that it is a directory, and that it is readable, writable, and executable. Unreadable or unsupported images fail gracefully during loading without terminating the application.
 
-- directory existence,
-- directory read, write, and execute permissions,
-- readable image availability.
+### DiskIdentifier References
 
-Unreadable or unsupported images fail gracefully during loading without terminating the application.
+The directory field also accepts DiskIdentifier references of the form `<64-character hex hash>::<relative path>`. GalleryCleaner resolves them by querying the DiskIdentifier service over HTTP and, when the configured port does not answer, by discovering the service port through ServiceHandler. The request details are documented in [README-DEV.md](README-DEV.md).
 
-### DiskIdentifier Integration
+## Configuration
 
-The directory field also accepts DiskIdentifier references in the form `<64-character hex hash>::<relative path>`. GalleryCleaner resolves them by querying the DiskIdentifier service over HTTP, falling back to ServiceHandler port discovery when the configured port does not respond.
+GalleryCleaner reads `resources/configuration.json`. If the file is missing, unreadable, or invalid JSON, every key falls back to its default. A missing key also falls back to its default.
 
-### Configuration
-
-`resources/configuration.json` keys:
-
-- `diskidentifierPort` — DiskIdentifier service port (default: `49157`).
-- `servicehandlerEnabled` — ServiceHandler port-discovery fallback (default: `true`).
-- `servicehandlerPort` — ServiceHandler service port (default: `49155`).
-
-### Logging
-
-Each run writes a log file to `logs/` named `DD-MM-YYYY_HH.MM.SS.log` and mirrors the same messages to the console.
-
-### Tech Stack
-
-- **Language:** Python
-- **UI Framework:** CustomTkinter
-- **Image Processing:** Pillow
-- **File Removal:** Send2Trash
-
-### Project Structure
-
-```text
-GalleryCleaner/
-├── src/
-│   ├── main.py
-│   └── models/
-│       ├── __init__.py
-│       ├── post_request.py
-│       └── post_response.py
-├── scripts/
-│   ├── setup.bat
-│   ├── setup.sh
-│   ├── run.bat
-│   └── run.sh
-├── resources/
-│   ├── images/
-│   ├── configuration.json
-│   ├── search_index.json
-│   └── search_index_reverse.json
-├── requirements.txt
-├── .gitignore
-├── LICENSE
-└── README.md
-```
-
----
+| Key | Default | Effect |
+|---|---|---|
+| `diskidentifierPort` | `49157` | Port of the DiskIdentifier service on `127.0.0.1` used to resolve DiskIdentifier references. A value that is not an integer falls back to `49157`. |
+| `servicehandlerEnabled` | `true` | Whether ServiceHandler port discovery is attempted when the configured DiskIdentifier port does not answer. Set it to `false` to disable the fallback; the strings `true`, `1`, and `yes` (case-insensitive) count as enabled. |
+| `servicehandlerPort` | `49155` | Port of the ServiceHandler service on `127.0.0.1` used for port discovery. A value that is not an integer falls back to `49155`. |
 
 ## Support
 
